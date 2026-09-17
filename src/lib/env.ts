@@ -9,7 +9,7 @@ const envSchema = z.object({
   SESSION_COOKIE_NAME: z.string().default("admin_session"),
   SESSION_TTL_HOURS: z.coerce.number().int().positive().default(24),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
-  PAYMENT_PROVIDER: z.enum(["stripe", "mobile_money"]).default("stripe"),
+  PAYMENT_PROVIDER: z.enum(["stripe", "mobile_money", "mock"]).default("mock"),
   STRIPE_SECRET_KEY: z.string().default("sk_test_dummy"),
   STRIPE_WEBHOOK_SECRET: z.string().default("whsec_dummy"),
   LOG_LEVEL: z.enum(["trace", "debug", "info", "warn", "error"]).default("info"),
