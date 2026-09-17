@@ -25,6 +25,7 @@
 import { Prisma, type OrderStatus, type PaymentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
+import { sendOrderConfirmation } from "@/server/email";
 
 export type PaymentOutcome = "succeeded" | "pending" | "failed";
 
@@ -64,7 +65,7 @@ export async function applyPaymentOutcome(
   paymentRef: string | null,
   status: PaymentOutcome,
 ): Promise<PaymentOutcomeResult> {
-  return prisma.$transaction(async (tx) => {
+  const result = await prisma.$transaction(async (tx): Promise<PaymentOutcomeResult> => {
     const order = await tx.order.findUnique({
       where: { id: orderId },
       include: { items: true, payments: { orderBy: { createdAt: "desc" } } },
@@ -187,6 +188,14 @@ export async function applyPaymentOutcome(
       idempotent: false,
     };
   });
+
+  // Email de confirmation HORS transaction : un email ne se rollback pas, et
+  // un échec d'envoi ne doit jamais annuler un paiement encaissé.
+  if (result.paymentStatus === "SUCCEEDED" && !result.idempotent) {
+    await sendOrderConfirmation(result.orderId);
+  }
+
+  return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────

@@ -599,6 +599,18 @@ function required(k: string) {
 
 **Brancher Mobile Money plus tard** : il suffit de remplacer `MobileMoneyPaymentProvider` par une implémentation réelle, sans toucher au code appelant (`src/server/checkout.ts`, `src/app/api/webhooks/*`).
 
+### Adaptateurs livrés en S3 (aucun compte tiers requis)
+
+| Fichier | `name` | Disponibilité | Comportement |
+|---------|--------|---------------|--------------|
+| `src/domain/payment/mock.ts` | `mock` | toujours | Scénarios pilotés par `metadata.scenario` : `success` (défaut) / `failure` / `pending` / `delayed`, encodés dans la ref (`mock_fail_…`) pour que `capture` soit déterministe. `refund` et `verifyWebhook` (header `x-mock-signature` + body `{ eventKey, type, data }`) sont réellement implémentés. |
+| `src/domain/payment/bank-transfer.ts` | `bank_transfer` | toujours | Aucune API : `createIntent` renvoie une ref `bt_…` et l'URL d'une page d'instructions IBAN (expiration +7 j). `capture` et `refund` renvoient `pending` — la confirmation est **manuelle** (`POST /api/admin/orders/[id]/mark-paid`). `verifyWebhook` jette : un virement n'émet pas de webhook. |
+| `src/domain/payment/mobile-money.ts` | `mobile_money` | toujours (simulé) | Orange Money / MTN. `createIntent` exige `metadata.operator` + `metadata.phone`, renvoie `mm_<OPERATOR>_…` et l'URL d'une page d'instruction USSD (expiration +15 min). La commande reste `PENDING_PAYMENT` jusqu'au callback `POST /api/payments/mobile-money/callback` (idempotent via `WebhookEvent`). Cible réelle documentée en tête de fichier : NotchPay / Flutterwave. |
+
+- **Registry** (`src/domain/payment/registry.ts`) : `selectPaymentProvider(name?)` (défaut `process.env.PAYMENT_PROVIDER`, soit `mock`) et `listAvailableProviders()` — consommé par `GET /api/payments/providers` et le formulaire de checkout, qui n'affiche que les méthodes réellement utilisables. `"stripe"` lève une erreur explicite (clés à définir + `stripe.ts` à implémenter).
+- **Transitions de paiement** : une seule implémentation, `applyPaymentOutcome(orderId, paymentRef, status)` dans `src/server/payments.ts`, partagée par le checkout, le callback Mobile Money et la validation admin du virement. Idempotente par construction (ADR-005).
+- **Emails transactionnels** : `src/server/email.ts` écrit chaque message dans la table `EmailOutbox` (`OutboxEmailSender`) — aucun SMTP. `EMAIL_PROVIDER=resend|smtp` jettera un message indiquant la variable à définir. Templates : `order_confirmation` (déclenchée quand la commande passe à PAID) et `order_shipped` (déclenchée par `POST /api/admin/orders/[id]/mark-shipped`).
+
 ---
 
 ## 4. Routes API

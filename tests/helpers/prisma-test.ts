@@ -18,6 +18,7 @@ export const prismaTest = new PrismaClient({
 });
 
 const TABLES = [
+  "EmailOutbox",
   "OrderItem",
   "Payment",
   "Shipment",

@@ -295,3 +295,26 @@ model AuditLog {
   @@index([entity, entityId])
   @@index([createdAt])
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Emails transactionnels (outbox en base — aucun SMTP requis)
+// ─────────────────────────────────────────────────────────────────────
+
+// Chaque email « envoyé » est d'abord écrit ici. Aujourd'hui `provider` vaut
+// toujours "outbox" : aucun compte tiers n'est nécessaire, l'email est
+// consultable en base (et par l'admin). Brancher Resend/SMTP plus tard =
+// ajouter un second EmailSender qui écrit la même ligne puis l'envoie.
+model EmailOutbox {
+  id       String    @id @default(cuid())
+  to       String
+  subject  String
+  bodyText String
+  bodyHtml String?
+  template String // "order_confirmation" | "order_shipped"
+  orderId  String?
+  sentAt   DateTime  @default(now())
+  provider String    @default("outbox") // "outbox" aujourd'hui, "resend"/"smtp" demain
+
+  @@index([orderId])
+  @@index([sentAt])
+}
