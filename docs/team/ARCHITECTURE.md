@@ -246,7 +246,7 @@ model Variant {
   productId    String
   sku          String        @unique
   name         String        // ex: "Rouge / M"
-  priceCents   Int           // prix de base, en minor units de la devise (cf. ADR-0003 — dette de naming)
+  priceMinor   Int           // prix de base, en minor units (ISO 4217) de la devise du variant
   attributes   Json          // { color: "red", size: "M" }
   weightGrams  Int?
   active       Boolean       @default(true)
@@ -276,7 +276,7 @@ model Cart {
   customerId String?
   sessionKey String?    @unique        // cookie guest, hash du fingerprint
   status     CartStatus @default(ACTIVE)
-  currency   String     @default("EUR")
+  currency   String                          // ISO-4217, affectée à la création depuis SHOP_CURRENCY (DAT §10)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   customer   Customer?  @relation(fields: [customerId], references: [id])
@@ -290,7 +290,7 @@ model CartItem {
   cartId      String
   variantId   String
   quantity    Int
-  unitPriceCents Int   // snapshot prix au moment de l'ajout (anti-surpricing)
+  unitPriceMinor Int   // snapshot prix au moment de l'ajout (anti-surpricing), minor units ISO-4217
   cart        Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   variant     Variant @relation(fields: [variantId], references: [id])
   @@unique([cartId, variantId])
@@ -317,10 +317,10 @@ model Order {
   shippingAddressSnapshot Json                 // ← valeur légale : copie figée au moment de la commande
   billingAddressSnapshot  Json?                // idem, null si billingSameAsShipping = true
   status          OrderStatus @default(PENDING_PAYMENT)
-  subtotalCents   Int
-  shippingCents   Int
-  totalCents      Int
-  currency        String      @default("EUR")
+  subtotalMinor   Int
+  shippingMinor   Int
+  totalMinor      Int
+  currency        String                          // ISO-4217, copiée depuis Cart.currency à la conversion (DAT §10)
   paymentProvider String                       // "stripe" | "mobile_money"
   paymentRef      String?                     // PaymentIntent id / tx ref
   placedAt        DateTime    @default(now())
@@ -343,7 +343,7 @@ model OrderItem {
   orderId       String
   variantId     String
   quantity      Int
-  unitPriceCents Int
+  unitPriceMinor Int
   productNameSnapshot String
   variantNameSnapshot String
   order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -355,14 +355,16 @@ model OrderItem {
 // Paiements & logistique
 // ─────────────────────────────────────────────────────────────────────
 
-enum PaymentStatus { PENDING SUCCEEDED FAILED REFUNDED }
+// REFUND_PENDING = refund soumis au PSP, en attente de webhook (charge.refunded).
+// REFUNDED = confirmation reçue. Source de vérité du refund — voir ADR-0002 (S1-016).
+enum PaymentStatus { PENDING SUCCEEDED FAILED REFUND_PENDING REFUNDED }
 
 model Payment {
   id            String        @id @default(cuid())
   orderId       String
   provider      String
   providerRef   String        // Stripe PaymentIntent id, etc.
-  amountCents   Int
+  amountMinor   Int                              // minor units ISO-4217 (cf. ADR-0003)
   currency      String
   status        PaymentStatus
   rawPayload    Json?
@@ -420,11 +422,7 @@ model AuditLog {
 
 **Décisions encodées dans le schéma** :
 
-- **Prix en `Int` minor units ISO 4217** (cf. ADR-0003 amendée) :
-  aucun `Float` dans le modèle. La devise vit dans `Currency`
-  strings ISO-4217 ; les colonnes `priceCents` / `amountCents` /
-  `unitPriceCents` / `subtotalCents` etc. sont des **minor units** de
-  cette devise (dette de naming documentée).
+- **Prix en `Int` minor units ISO-4217** : aucun `Float` dans le modèle. La devise vit dans `currency` (string ISO-4217) sur chaque ligne qui porte un prix.
 - **Stock décrémenté à la confirmation** : `Stock.reserved` monte au checkout (`PENDING_PAYMENT`), descend + `Stock.quantity` descend au webhook `payment_intent.succeeded`. La décrément finale est transactionnelle (`prisma.$transaction`).
 - **Idempotence webhooks** : `WebhookEvent @@unique([provider, eventKey])` + `Payment @@unique([provider, providerRef])`. Une seconde insertion échoue → on renvoie 200 à Stripe et on ne rejoue pas la logique.
 - **Snapshot prix/nom sur `OrderItem`** : même si le `Variant` est modifié/supprimé ensuite, la commande reste fidèle.
@@ -441,7 +439,7 @@ model AuditLog {
 ```ts
 import type { JsonValue } from "@prisma/client/runtime/library";
 
-export type Money = { amountCents: number; currency: string };
+export type Money = { amountMinor: number; currency: string };
 
 export type CreateIntentInput = {
   orderId: string;
@@ -502,7 +500,7 @@ export class StripePaymentProvider implements PaymentProvider {
 
   async createIntent(input: CreateIntentInput): Promise<CreateIntentResult> {
     const pi = await this.stripe.paymentIntents.create({
-      amount: input.amount.amountCents,
+      amount: input.amount.amountMinor,
       currency: input.amount.currency.toLowerCase(),
       automatic_payment_methods: { enabled: true },
       receipt_email: input.customer.email,
@@ -525,7 +523,7 @@ export class StripePaymentProvider implements PaymentProvider {
   async refund(ref: string, amount?) {
     const r = await this.stripe.refunds.create({
       payment_intent: ref,
-      amount: amount?.amountCents,
+      amount: amount?.amountMinor,
     });
     return { refundRef: r.id, status: r.status === "succeeded" ? "succeeded" : "pending" };
   }
@@ -617,7 +615,7 @@ Toutes les routes vivent dans `src/app/api/**/route.ts`. Convention : handler ex
 | POST    | `/api/cart/items`                      | `{ variantId, quantity }`                          | cookie sessionKey | `{ cartId, items }`                  |
 | PATCH   | `/api/cart/items/[id]`                 | `{ quantity }`                                     | cookie sessionKey | `{ items }`                          |
 | DELETE  | `/api/cart/items/[id]`                 | —                                                  | cookie sessionKey | `{ items }`                          |
-| GET     | `/api/cart`                            | —                                                  | cookie sessionKey | `{ id, items, subtotalCents, totalCents }` |
+| GET     | `/api/cart`                            | —                                                  | cookie sessionKey | `{ id, items, subtotalMinor, totalMinor, currency }` |
 | POST    | `/api/checkout`                        | `{ addressId, customer: { email, firstName, lastName, phone } }` | cookie sessionKey | `{ orderId, payment: { clientToken, redirectUrl } }` |
 | GET     | `/api/orders/[id]`                     | path                                               | sessionKey OU email | `OrderDto`                            |
 
@@ -699,7 +697,6 @@ Pinning strict : versions exactes pour reproductibilité CI. Mises à jour via D
   "bcryptjs": "2.4.3",
   "pino": "9.4.0",
   "pino-pretty": "11.2.2",
-  "@t3-oss/env-nextjs": "0.11.1",
   "cuid": "3.0.0"
 }
 ```
@@ -739,7 +736,6 @@ Pinning strict : versions exactes pour reproductibilité CI. Mises à jour via D
 | `zod`                         | Validation runtime des payloads API + parsing d'env                    |
 | `bcryptjs`                    | Hash mots de passe admin (pure JS, pas de binding natif → Coolify OK) |
 | `pino`                        | Logger JSON rapide, faible overhead en prod                           |
-| `@t3-oss/env-nextjs`          | Validation des env au boot, types générés, fail-fast                  |
 | `cuid`                        | Identifiants non-énumérables, plus sûr que `uuid` pour URLs publiques  |
 | `vitest`                      | Rapide, même config que la prod Next, support TS natif                |
 | `@playwright/test`            | E2E navigateur réel, indispensable pour Stripe Elements               |
@@ -1019,7 +1015,7 @@ jobs:
 
 ## 10. Variables d'environnement
 
-Validation au boot via `@t3-oss/env-nextjs` + `zod` dans `src/lib/env.ts`. Une variable manquante ou invalide → crash au démarrage.
+Validation au boot via `zod` (schéma dédié) dans `src/lib/env.ts`. Une variable manquante ou invalide → crash au démarrage avec un message d'erreur clair listant les clés fautives.
 
 ### Fichier `.env.example` (commit-safe)
 
@@ -1048,8 +1044,8 @@ STRIPE_PUBLISHABLE_KEY=pk_test_xxx     # NEXT_PUBLIC_ ci-dessous
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 
 # ─── Shipping (placeholder MVP) ───────────────────────
-SHIPPING_FLAT_CENTS=590          # 5,90 €
-FREE_SHIPPING_THRESHOLD_CENTS=5000
+SHIPPING_FLAT_MINOR=590          # 5,90 EUR (minor units ISO-4217)
+FREE_SHIPPING_THRESHOLD_MINOR=5000
 
 # ─── Dev only ─────────────────────────────────────────
 DATABASE_URL_TEST=postgresql://shop:shop@localhost:5432/shop_test?schema=public
@@ -1064,7 +1060,7 @@ DATABASE_URL_TEST=postgresql://shop:shop@localhost:5432/shop_test?schema=public
 | `SESSION_COOKIE_NAME`         | `admin_session`    | Cookie non-deviné                             |
 | Cookie flags (code)           | `HttpOnly; Secure; SameSite=Lax` | Pas accessible JS, HTTPS-only, OK pour navigations normales |
 | `LOG_LEVEL`                   | `info` prod / `debug` dev | Pas de `trace` en prod                   |
-| `SHIPPING_FLAT_CENTS`         | `590`              | À ajuster quand l'API transport arrive         |
+| `SHIPPING_FLAT_MINOR`         | `590`              | À ajuster quand l'API transport arrive         |
 
 ### Secrets à NE PAS commit
 
@@ -1097,8 +1093,8 @@ Format : contexte · décision · conséquence. Gardés dans `docs/decisions/000
 ### ADR-004 — Stock décrémenté à la confirmation de paiement, pas au panier
 
 **Contexte** : décrémenter au panier = fausse rupture visible. Décrémenter au paiement = pas de stock réservé pour les abandons.
-**Décision** : `Stock.reserved` monte au passage en `PENDING_PAYMENT`, descend + `Stock.quantity` descend au webhook `payment_intent.succeeded`. Tout est fait dans une seule `prisma.$transaction` (isolation `READ COMMITTED`) **avec verrou explicite `SELECT … FOR UPDATE`** sur la ligne `Stock`, **plus** contrainte `CHECK (quantity >= 0 AND reserved >= 0)` posée en SQL brut (cf. CONVENTIONS §12).
-**Conséquence** : un panier peut promettre plus que le stock réel ; on prévient l'utilisateur au checkout si `available < requested` ; on annule la commande si le webhook n'arrive pas dans un délai raisonnable. **Règle snapshots étendue (amendement S1-014)** : les `OrderItem.productNameSnapshot` / `variantNameSnapshot` / `unitPriceCents` **et** les `Order.shippingAddressSnapshot` / `billingAddressSnapshot` sont la source de vérité pour toute donnée imprimée ou exportée (facture, étiquette, comptable). Les FK vers `Address` servent au pré-remplissage uniquement.
+**Décision** : `Stock.reserved` monte au passage en `PENDING_PAYMENT`, descend + `Stock.quantity` descend au webhook `payment_intent.succeeded`. Tout est fait dans une seule `prisma.$transaction` en isolation `Serializable` (paramètre `isolationLevel: "Serializable"`), avec politique de retry borné sur `SQLSTATE 40001` (cf. `CONVENTIONS §12`), **plus** contrainte `CHECK (quantity >= 0 AND reserved >= 0 AND reserved <= quantity)` posée en SQL brut dans la migration (cf. ADR-0006 §5).
+**Conséquence** : un panier peut promettre plus que le stock réel ; on prévient l'utilisateur au checkout si `available < requested` ; on annule la commande si le webhook n'arrive pas dans un délai raisonnable. **Règle snapshots étendue (amendement S1-014)** : les `OrderItem.productNameSnapshot` / `variantNameSnapshot` / `unitPriceMinor` **et** les `Order.shippingAddressSnapshot` / `billingAddressSnapshot` sont la source de vérité pour toute donnée imprimée ou exportée (facture, étiquette, comptable). Les FK vers `Address` servent au pré-remplissage uniquement.
 
 ### ADR-005 — Webhooks Stripe idempotents via table `WebhookEvent`
 

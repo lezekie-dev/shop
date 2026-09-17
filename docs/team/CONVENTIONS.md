@@ -24,8 +24,11 @@
 9. [Ce qu'on ne fait PAS sans ADR](#9-ce-quon-ne-fait-pas-sans-adr)
 10. [Vie de l'équipe — rituels](#10-vie-de-léquipe--rituels)
 11. [Middleware — ce qu'il couvre, ce qu'il ne couvre PAS](#11-middleware--ce-quil-couvre-ce-quil-ne-couvre-pas)
-12. [Transactions DB — règles d'isolation et verrous](#12-transactions-db--règles-disolation-et-verrous)
+12. [Transactions PostgreSQL — `Serializable` + retry borné](#12-transactions-postgresql--serializable--retry-borné)
 13. [Capacités par rôle — matrice STAFF / ADMIN](#13-capacités-par-rôle--matrice-staff--admin)
+14. [Cartographie des dépendances par carte](#14-cartographie-des-dépendances-par-carte)
+
+---
 
 ---
 
@@ -626,104 +629,85 @@ export const POST = withApi({ requireAdmin: true, schema: … }, async ({ sessio
 > vers `/admin/login`), l'API doit quant à elle **refuser**
 > structurellement les requêtes non authentifiées.
 
----
+## 12. Transactions PostgreSQL — `Serializable` + retry borné
 
-## 12. Transactions DB — règles d'isolation et verrous
+> **Source** : ADR-0004 amendée S1-016 (ratification D9).
 
-> Ajouté en Sprint 1 carte S1-014 (audit D8 / arbitrage D4).
-> Complète ADR-0004 (stock au paiement) et ADR-0005 (idempotence
-> webhooks).
+### Pourquoi `Serializable`
 
-**Règle** : aucune écriture de stock ne peut descendre sous zéro —
-**ni par le code, ni par la base**.
+Les transactions qui lisent **et écrivent** `Stock` ou `Order.status`
+(checkout en S2, webhook `payment_intent.succeeded` en S3) utilisent
+**toutes** `isolationLevel: "Serializable"` (paramètre de `prisma.$transaction`,
+(DAT §7). Un seul mécanisme d'isolation,
+qui ne dépend pas de la discipline de celui qui écrira la requête.
 
-### Trois couches de défense
+### Politique de retry — obligatoire, sans exception
 
-1. **Isolation** : toutes les transactions applicatives utilisent
-   `READ COMMITTED` (défaut Postgres) **+ verrou explicite** sur la
-   ligne `Stock` :
+`Serializable` ne sérialise pas : PostgreSQL **rejette** les transactions
+concurrentes au commit avec `SQLSTATE 40001` (`serialization_failure`).
+Sans retry, on remplace une double réservation silencieuse par un 500
+visible sous exactement la charge que le finding 8 d'S1-002 décrit.
 
-   ```ts
-   await prisma.$transaction(async (tx) => {
-     // 1. Verrou pessimiste sur la ligne Stock
-     const rows = await tx.$queryRaw<Stock[]>`
-       SELECT "variantId", "quantity", "reserved"
-       FROM "Stock"
-       WHERE "variantId" = ANY(${variantIds}::text[])
-       FOR UPDATE
-     `;
-     // 2. Vérif métier (src/domain/stock.ts)
-     assertCanReserve(rows, requested);
-     // 3. Écritures
-     await tx.stock.update({ where: { variantId }, data: { reserved: { increment: q } } });
-     // …
-   }, { isolationLevel: "ReadCommitted" });
-   ```
+Règle **non optionnelle** pour toute transaction `Serializable` du `src/server/` :
 
-   - Le `FOR UPDATE` bloque les lectures concurrentes d'autres
-     transactions qui voudraient réserver la même ligne, jusqu'au
-     `COMMIT`. Deux checkouts simultanés sur la dernière unité sont
-     sérialisés — un seul réussit, le second voit le stock mis à jour
-     et (a) réserve avec succès, ou (b) tombe sur
-     `StockUnavailableError`.
-   - `READ COMMITTED` suffit ici : la sérialisation est portée par le
-     verrou ligne, pas par l'isolation. On n'a pas besoin de
-     `SERIALIZABLE` (qui rajouterait des `SSI` coûteux et rollback
-     applicatif). Cf. alternatives écartées.
+| Paramètre         | Valeur                                  | Pourquoi                                                                                  |
+|-------------------|-----------------------------------------|-------------------------------------------------------------------------------------------|
+| Nombre de tentatives | **3** (1 initiale + 2 retries)        | Suffisant pour la majorité des cas ; au-delà, le conflit est structurel, pas concurrent. |
+| Backoff           | **50 ms, 150 ms** (géométrique)         | Assez court pour ne pas dégrader la conversion checkout ; assez long pour laisser passer le conflit. |
+| Erreur retry      | `SQLSTATE 40001` **uniquement**          | Pas de retry sur `23P01` (deadlock_detected) — deadlock = logique applicative à corriger.   |
+| Échec final       | 503 au client / `200 {received:true}` au PSP | Voir ADR-0004 S1-016 §procédure d'exception (webhook acquitte toujours). |
 
-2. **Emplacements du verrou** : le `SELECT … FOR UPDATE` est posé
-   **obligatoirement** dans deux endroits, sans exception :
+### Implémentation attendue (`src/lib/db.ts`)
 
-   - `src/server/checkout.ts` — transaction de passage en
-     `PENDING_PAYMENT` (réservation `Stock.reserved += requested`).
-   - `src/server/webhook-handlers.ts` — transaction du handler
-     `payment_intent.succeeded` (`Stock.reserved -= requested` +
-     `Stock.quantity -= requested` + `Order.status = PAID`).
+```ts
+// Helper à créer en S2. Toute transaction checkout/webhook passe par là.
+export async function withSerializableRetry<T>(
+  fn: (tx: Prisma.TransactionClient) => Promise<T>,
+  opts?: { maxAttempts?: number; backoffMs?: number[] },
+): Promise<T> {
+  const max = opts?.maxAttempts ?? 3;
+  const backoff = opts?.backoffMs ?? [50, 150];
+  for (let attempt = 1; attempt <= max; attempt++) {
+    try {
+      return await prisma.$transaction(fn, { isolationLevel: "Serializable" });
+    } catch (err) {
+      const isSerializationFailure =
+        err instanceof Prisma.PrismaClientUnknownRequestError &&
+        // Prisma expose le code PG via err.message?.match(/SQLSTATE (\d{5})/)
+        /SQLSTATE 40001/.test(String(err));
+      if (!isSerializationFailure || attempt === max) throw err;
+      await new Promise((r) => setTimeout(r, backoff[attempt - 1] ?? 50));
+    }
+  }
+  /* unreachable */
+}
+```
 
-3. **Contrainte base** : la migration pose une contrainte `CHECK` en
-   SQL brut :
+### Tests obligatoires (DoD S2 / S3)
 
-   ```sql
-   -- Prisma ne supporte pas CHECK nativement → $executeRawUnsafe
-   ALTER TABLE "Stock"
-     ADD CONSTRAINT stock_nonneg
-     CHECK ("quantity" >= 0 AND "reserved" >= 0);
-   ```
+- **Test nominal** : 1 transaction checkout, 1 transaction webhook,
+  pas de conflit → pas de retry, succès.
+- **Test de contention** : 2 transactions concurrentes sur la dernière
+  unité → 1 succès, 1 retry, 1 succès final. Vérifier que `Stock.reserved`
+  reste cohérent après les deux commits.
+- **Test d'échec** : forcer `40001` au 3e essai (mock) → 503 (checkout) ou
+  `200 {received:true}` (webhook) selon le contexte.
+- **Test non-retry** : une erreur `P2002` (contrainte unique) doit **propager
+  immédiatement**, pas être retryée.
 
-   - **Pourquoi SQL brut** : Prisma n'expose pas les contraintes
-     `CHECK` dans le DSL schema (à la date de la stack figée DAT §6).
-     On les pose en `$executeRawUnsafe` dans la même migration qui
-     crée la table.
-   - **Pourquoi `CHECK` en plus du verrou** : défense en profondeur.
-     Si un jour un dev ouvre une nouvelle transaction sans
-     `FOR UPDATE` (oubli, refactor maladroit), la contrainte CHECK
-     refuse l'écriture en base → erreur explicite plutôt que stock
-     négatif silencieux. La contrainte est la **ceinture** ; le
-     verrou applicatif est la **bretelle**.
+### Anti-patterns (interdits)
 
-### Ce qu'on ne fait PAS
-
-- ❌ Transaction sans `FOR UPDATE` sur la ligne `Stock` impliquée.
-- ❌ Décrément « optimiste » basé sur une lecture hors transaction
-  (`const stock = await prisma.stock.findUnique(…); stock.quantity -= q;`).
-- ❌ Désactiver la contrainte `CHECK` (« on n'en a plus besoin »).
-  Elle est non-négociable.
-- ❌ Basculer l'isolation à `SERIALIZABLE` sans ADR (le coût est
-  significatif, et ici on n'en a pas besoin).
-
-### Tests obligatoires (intégration)
-
-- `tests/integration/stock.test.ts` : deux checkouts concurrents sur
-  la dernière unité → un seul `Order` en `PENDING_PAYMENT`, l'autre
-  reçoit `StockUnavailableError`. Couvre le verrou.
-- `tests/integration/stock.test.ts` : décrément forcé à -1 (via
-  `$executeRawUnsafe` qui bypasse la couche applicative) → la
-  contrainte `CHECK` refuse. Couvre la base.
-- `tests/integration/webhook.test.ts` : double livraison du même
-  `payment_intent.succeeded` → seul le premier appel décrémente
-  (idempotence ADR-0005), le second est no-op. Combiné avec la
-  contrainte, ça garantit que le webhook « rejoué » ne peut pas
-  faire descendre le stock sous zéro.
+- ❌ Mélanger `Serializable` et `ReadCommitted` dans la même transaction —
+  Prisma throw `Invalid isolation level`. Une transaction = un niveau.
+- ❌ `await prisma.$transaction(fn, { isolationLevel: "Serializable" })` sans
+  wrapper de retry : la transaction peut échouer au commit, on perd la
+  réservation sans le client le sache.
+- ❌ Retry sur n'importe quelle erreur `Prisma.*` : seules les `40001`
+  sont des échecs de sérialisation. Les autres erreurs (contraintes,
+  timeouts) indiquent un vrai bug.
+- ❌ `BEGIN; SET TRANSACTION ISOLATION LEVEL SERIALIZABLE; ...` en SQL brut :
+  passer par `prisma.$transaction` avec `isolationLevel`, qui gère le commit/
+  rollback et la propagation d'erreur propre.
 
 ---
 
@@ -809,3 +793,19 @@ La capacité est testée une fois dans `withApi`, mappée une fois dans
 `CAPABILITIES`, et c'est fini. La matrice vit ici, dans la doc,
 pour qu'elle soit lue une fois par tout dev qui touche au code
 admin — plutôt que redécouverte dans chaque fichier de route.
+
+## 14. Cartographie des dépendances par carte des dépendances par carte (cf. ADR-0006)
+
+| Carte   | Dépendances ajoutées                                                              |
+|---------|----------------------------------------------------------------------------------|
+| S1-001 scaffold | (aucune — fichiers de config + `src/lib/env.ts`)                      |
+| S1-005 catalogue | (aucune — réutilise les dépendances existantes)                        |
+| S1-006 auth admin | `dependencies`: `bcryptjs@2.4.3` ; `devDependencies`: `@types/bcryptjs@2.4.6` |
+| S1-007 checkout  | `dependencies`: `stripe@16.12.0`, `@stripe/stripe-js@4.8.0`, `@stripe/react-stripe-js@2.8.1`, `cuid@3.0.0` |
+| S1-008 webhook   | (aucune — réutilise `stripe` de S1-007)                                  |
+| S1-009 observabilité | `dependencies`: `pino@9.4.0`, `pino-pretty@11.2.2`                |
+
+**Retrait validé** (vs DAT §6) : aucun wrapper env couplé au transform Next n'est
+installé. Remplacé par **zod pur** dans `src/lib/env.ts` (commentaire WAR ROOM
+backend-dev, 22:24). Si quelqu'un souhaite réintroduire un tel wrapper, il faut une
+ADR (cf. §9).
