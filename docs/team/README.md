@@ -39,8 +39,10 @@ docs/
     ├── 0003-prix-minor-units.md   ← amendée S1-014 (minor units ISO 4217)
     ├── 0004-stock-au-paiement.md   ← amendée S1-014 (règle snapshots étendue)
     ├── 0005-webhooks-idempotents.md
-    ├── 0006-deps-cartography.md    ← créée S1-014
-    └── 0007-migration-prod.md      ← créée S1-014
+    ├── 0006-cartographie-deps-et-check-constraints.md   ← créée S1-014 (renommée S1-018 — fichiers + check constraints)
+    ├── 0007-migration-prod-init-container.md            ← créée S1-014 (renommée S1-018)
+    ├── 0008-role-staff-capacite.md                       ← créée S1-015
+    └── 0009-adresses-commande-snapshotees.md             ← créée S1-015
 
 src/
 ├── app/                     ← App Router (pages + API)
