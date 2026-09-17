@@ -1,0 +1,297 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Identité & accès
+// ─────────────────────────────────────────────────────────────────────
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  passwordHash String
+  role         Role       @default(ADMIN)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  sessions     Session[]
+  auditLogs    AuditLog[]
+
+  @@index([email])
+}
+
+enum Role {
+  ADMIN
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Clients finaux (guest + identifiés)
+// ─────────────────────────────────────────────────────────────────────
+
+model Customer {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  firstName String?
+  lastName  String?
+  phone     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  addresses Address[]
+  carts     Cart[]
+  orders    Order[]
+
+  @@index([email])
+}
+
+model Address {
+  id         String   @id @default(cuid())
+  customerId String
+  line1      String
+  line2      String?
+  city       String
+  postalCode String
+  country    String   @default("FR")
+  isDefault  Boolean  @default(false)
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders     Order[]
+
+  @@index([customerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Catalogue
+// ─────────────────────────────────────────────────────────────────────
+
+model Category {
+  id       String    @id @default(cuid())
+  slug     String    @unique
+  name     String
+  products Product[]
+}
+
+model Product {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String    @db.Text
+  categoryId  String
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  category    Category  @relation(fields: [categoryId], references: [id])
+  variants    Variant[]
+
+  @@index([categoryId])
+  @@index([active])
+}
+
+model Variant {
+  id          String     @id @default(cuid())
+  productId   String
+  sku         String     @unique
+  name        String
+  priceCents  Int
+  attributes  Json
+  weightGrams Int?
+  active      Boolean    @default(true)
+  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stock       Stock?
+  cartItems   CartItem[]
+  orderItems  OrderItem[]
+
+  @@index([productId])
+}
+
+model Stock {
+  variantId String  @id
+  quantity  Int     @default(0)
+  reserved  Int     @default(0)
+  variant   Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@index([variantId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Panier & commande
+// ─────────────────────────────────────────────────────────────────────
+
+enum CartStatus {
+  ACTIVE
+  CONVERTED
+  ABANDONED
+}
+
+model Cart {
+  id         String     @id @default(cuid())
+  customerId String?
+  sessionKey String?    @unique
+  status     CartStatus @default(ACTIVE)
+  currency   String     @default("EUR")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  customer   Customer?  @relation(fields: [customerId], references: [id])
+  items      CartItem[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model CartItem {
+  id             String  @id @default(cuid())
+  cartId         String
+  variantId      String
+  quantity       Int
+  unitPriceCents Int
+  cart           Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  variant        Variant @relation(fields: [variantId], references: [id])
+
+  @@unique([cartId, variantId])
+  @@index([cartId])
+}
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  PREPARING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  number          String      @unique
+  customerId      String
+  addressId       String
+  status          OrderStatus @default(PENDING_PAYMENT)
+  subtotalCents   Int
+  shippingCents   Int
+  totalCents      Int
+  currency        String      @default("EUR")
+  paymentProvider String
+  paymentRef      String?
+  placedAt        DateTime    @default(now())
+  paidAt          DateTime?
+  shippedAt       DateTime?
+  cancelledAt     DateTime?
+  customer        Customer    @relation(fields: [customerId], references: [id])
+  address         Address     @relation(fields: [addressId], references: [id])
+  items           OrderItem[]
+  payments        Payment[]
+  shipments       Shipment[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([placedAt])
+}
+
+model OrderItem {
+  id                  String  @id @default(cuid())
+  orderId             String
+  variantId           String
+  quantity            Int
+  unitPriceCents      Int
+  productNameSnapshot String
+  variantNameSnapshot String
+  order               Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variant             Variant @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Paiements & logistique
+// ─────────────────────────────────────────────────────────────────────
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  orderId     String
+  provider    String
+  providerRef String
+  amountCents Int
+  currency    String
+  status      PaymentStatus
+  rawPayload  Json?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerRef])
+  @@index([orderId])
+}
+
+enum ShipmentStatus {
+  PENDING
+  IN_TRANSIT
+  DELIVERED
+  RETURNED
+}
+
+model Shipment {
+  id          String         @id @default(cuid())
+  orderId     String
+  carrier     String?
+  trackingNo  String?
+  status      ShipmentStatus @default(PENDING)
+  shippedAt   DateTime?
+  deliveredAt DateTime?
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Webhooks idempotents + audit
+// ─────────────────────────────────────────────────────────────────────
+
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String
+  eventKey    String
+  type        String
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  payload     Json
+  error       String?
+
+  @@unique([provider, eventKey])
+  @@index([provider, type])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String
+  diff      Json?
+  createdAt DateTime @default(now())
+  user      User?    @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
