@@ -6,6 +6,15 @@ export default defineConfig({
     environment: "node",
     include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
     testTimeout: 30_000,
+    // Les tests d'intégration partagent la même DB Postgres et truncent
+    // toutes les tables en beforeEach. Si deux fichiers s'exécutent en
+    // parallèle, le TRUNCATE d'un fichier interrompt les requêtes de
+    // l'autre → 10s hook timeouts et "Argument `where` ... needs at least
+    // one of id or number" (sur des rows déjà effacées).
+    // On force donc l'exécution série : un fichier à la fois.
+    fileParallelism: false,
+    pool: "forks",
+    poolOptions: { forks: { singleFork: true } },
     // Charge .env.test (prioritaire) puis .env, avant tout import applicatif.
     // Sans ça, `src/lib/env.ts` jette au premier import parce que zod ne
     // trouve ni DATABASE_URL ni SESSION_SECRET.
