@@ -1,5 +1,11 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { config } from "dotenv";
+
+// Charge .env à la racine (tsx ne le fait pas par défaut, contrairement à `next dev`).
+// Priorité à .env.local s'il existe, puis .env.
+config({ path: ".env.local" });
+config({ path: ".env" });
 
 const prisma = new PrismaClient();
 
@@ -151,4 +157,8 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    // dotenv garde un fd ouvert sur .env, ce qui empêche Node de terminer
+    // proprement. On force la sortie pour que `npm run prisma:seed` ne
+    // timeout pas dans les hooks Prisma / Vitest.
+    process.exit(0);
   });
