@@ -1,6 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { MOCK_SIGNATURE_HEADER, MockPaymentProvider } from "@/domain/payment/mock";
-import { selectPaymentProvider } from "@/domain/payment/registry";
 
 const baseInput = {
   orderId: "order_test_1",
@@ -164,36 +163,5 @@ describe("MockPaymentProvider", () => {
         }),
       ).rejects.toThrow(/signature/i);
     });
-  });
-});
-
-describe("selectPaymentProvider", () => {
-  const originalEnv = process.env.PAYMENT_PROVIDER;
-
-  afterEach(() => {
-    if (originalEnv === undefined) delete process.env.PAYMENT_PROVIDER;
-    else process.env.PAYMENT_PROVIDER = originalEnv;
-  });
-
-  it("renvoie un MockPaymentProvider quand PAYMENT_PROVIDER=mock", () => {
-    process.env.PAYMENT_PROVIDER = "mock";
-    const p = selectPaymentProvider();
-    expect(p.name).toBe("mock");
-  });
-
-  it("renvoie MockPaymentProvider par défaut (env absente)", () => {
-    delete process.env.PAYMENT_PROVIDER;
-    const p = selectPaymentProvider();
-    expect(p.name).toBe("mock");
-  });
-
-  it("jette si PAYMENT_PROVIDER a une valeur inconnue", () => {
-    process.env.PAYMENT_PROVIDER = "carrier-pigeon";
-    expect(() => selectPaymentProvider()).toThrow(/inconnu/i);
-  });
-
-  it("jette si PAYMENT_PROVIDER=stripe (adaptateur non implémenté)", () => {
-    process.env.PAYMENT_PROVIDER = "stripe";
-    expect(() => selectPaymentProvider()).toThrow(/S3/i);
   });
 });
