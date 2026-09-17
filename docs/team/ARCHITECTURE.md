@@ -71,7 +71,7 @@ shop/
 │   │   │   └── admin/...
 │   │   └── middleware.ts         # protection routes /admin/*
 │   ├── domain/                   # logique métier pure, aucune dépendance Next/Prisma
-│   │   ├── pricing.ts            # calcul totaux depuis centimes
+│   │   ├── pricing.ts            # calcul totaux depuis minor units (Int)
 │   │   ├── stock.ts              # règles disponibilité/décrément
 │   │   ├── order.ts              # transitions de statut
 │   │   └── payment/
@@ -96,7 +96,7 @@ shop/
 │   │   │   ├── cart-button.tsx
 │   │   │   ├── product-card.tsx
 │   │   │   ├── variant-picker.tsx
-│   │   │   └── money.tsx         # format centimes → affichage
+│   │   │   └── money.tsx         # format minor units → affichage
 │   │   └── styles/
 │   │       └── globals.css
 │   └── types/
@@ -241,7 +241,7 @@ model Variant {
   productId    String
   sku          String        @unique
   name         String        // ex: "Rouge / M"
-  priceCents   Int           // prix de base, en centimes
+  priceMinor   Int           // prix de base, en minor units (ISO 4217) de la devise du variant
   attributes   Json          // { color: "red", size: "M" }
   weightGrams  Int?
   active       Boolean       @default(true)
@@ -271,7 +271,7 @@ model Cart {
   customerId String?
   sessionKey String?    @unique        // cookie guest, hash du fingerprint
   status     CartStatus @default(ACTIVE)
-  currency   String     @default("EUR")
+  currency   String                          // ISO-4217, affectée à la création depuis SHOP_CURRENCY (DAT §10)
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
   customer   Customer?  @relation(fields: [customerId], references: [id])
@@ -285,7 +285,7 @@ model CartItem {
   cartId      String
   variantId   String
   quantity    Int
-  unitPriceCents Int   // snapshot prix au moment de l'ajout (anti-surpricing)
+  unitPriceMinor Int   // snapshot prix au moment de l'ajout (anti-surpricing), minor units ISO-4217
   cart        Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   variant     Variant @relation(fields: [variantId], references: [id])
   @@unique([cartId, variantId])
@@ -308,10 +308,10 @@ model Order {
   customerId      String
   addressId       String
   status          OrderStatus @default(PENDING_PAYMENT)
-  subtotalCents   Int
-  shippingCents   Int
-  totalCents      Int
-  currency        String      @default("EUR")
+  subtotalMinor   Int
+  shippingMinor   Int
+  totalMinor      Int
+  currency        String                          // ISO-4217, copiée depuis Cart.currency à la conversion (DAT §10)
   paymentProvider String                       // "stripe" | "mobile_money"
   paymentRef      String?                     // PaymentIntent id / tx ref
   placedAt        DateTime    @default(now())
@@ -333,7 +333,7 @@ model OrderItem {
   orderId       String
   variantId     String
   quantity      Int
-  unitPriceCents Int
+  unitPriceMinor Int
   productNameSnapshot String
   variantNameSnapshot String
   order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -352,7 +352,7 @@ model Payment {
   orderId       String
   provider      String
   providerRef   String        // Stripe PaymentIntent id, etc.
-  amountCents   Int
+  amountMinor   Int                              // minor units ISO-4217 (cf. ADR-0003)
   currency      String
   status        PaymentStatus
   rawPayload    Json?
@@ -410,7 +410,7 @@ model AuditLog {
 
 **Décisions encodées dans le schéma** :
 
-- **Prix en `Int` centimes** : aucun `Float` dans le modèle. La devise vit dans `Currency` strings ISO-4217.
+- **Prix en `Int` minor units ISO-4217** : aucun `Float` dans le modèle. La devise vit dans `currency` (string ISO-4217) sur chaque ligne qui porte un prix.
 - **Stock décrémenté à la confirmation** : `Stock.reserved` monte au checkout (`PENDING_PAYMENT`), descend + `Stock.quantity` descend au webhook `payment_intent.succeeded`. La décrément finale est transactionnelle (`prisma.$transaction`).
 - **Idempotence webhooks** : `WebhookEvent @@unique([provider, eventKey])` + `Payment @@unique([provider, providerRef])`. Une seconde insertion échoue → on renvoie 200 à Stripe et on ne rejoue pas la logique.
 - **Snapshot prix/nom sur `OrderItem`** : même si le `Variant` est modifié/supprimé ensuite, la commande reste fidèle.
@@ -427,7 +427,7 @@ model AuditLog {
 ```ts
 import type { JsonValue } from "@prisma/client/runtime/library";
 
-export type Money = { amountCents: number; currency: string };
+export type Money = { amountMinor: number; currency: string };
 
 export type CreateIntentInput = {
   orderId: string;
@@ -488,7 +488,7 @@ export class StripePaymentProvider implements PaymentProvider {
 
   async createIntent(input: CreateIntentInput): Promise<CreateIntentResult> {
     const pi = await this.stripe.paymentIntents.create({
-      amount: input.amount.amountCents,
+      amount: input.amount.amountMinor,
       currency: input.amount.currency.toLowerCase(),
       automatic_payment_methods: { enabled: true },
       receipt_email: input.customer.email,
@@ -511,7 +511,7 @@ export class StripePaymentProvider implements PaymentProvider {
   async refund(ref: string, amount?) {
     const r = await this.stripe.refunds.create({
       payment_intent: ref,
-      amount: amount?.amountCents,
+      amount: amount?.amountMinor,
     });
     return { refundRef: r.id, status: r.status === "succeeded" ? "succeeded" : "pending" };
   }
@@ -603,7 +603,7 @@ Toutes les routes vivent dans `src/app/api/**/route.ts`. Convention : handler ex
 | POST    | `/api/cart/items`                      | `{ variantId, quantity }`                          | cookie sessionKey | `{ cartId, items }`                  |
 | PATCH   | `/api/cart/items/[id]`                 | `{ quantity }`                                     | cookie sessionKey | `{ items }`                          |
 | DELETE  | `/api/cart/items/[id]`                 | —                                                  | cookie sessionKey | `{ items }`                          |
-| GET     | `/api/cart`                            | —                                                  | cookie sessionKey | `{ id, items, subtotalCents, totalCents }` |
+| GET     | `/api/cart`                            | —                                                  | cookie sessionKey | `{ id, items, subtotalMinor, totalMinor, currency }` |
 | POST    | `/api/checkout`                        | `{ addressId, customer: { email, firstName, lastName, phone } }` | cookie sessionKey | `{ orderId, payment: { clientToken, redirectUrl } }` |
 | GET     | `/api/orders/[id]`                     | path                                               | sessionKey OU email | `OrderDto`                            |
 
@@ -1034,8 +1034,8 @@ STRIPE_PUBLISHABLE_KEY=pk_test_xxx     # NEXT_PUBLIC_ ci-dessous
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
 
 # ─── Shipping (placeholder MVP) ───────────────────────
-SHIPPING_FLAT_CENTS=590          # 5,90 €
-FREE_SHIPPING_THRESHOLD_CENTS=5000
+SHIPPING_FLAT_MINOR=590          # 5,90 EUR (minor units ISO-4217)
+FREE_SHIPPING_THRESHOLD_MINOR=5000
 
 # ─── Dev only ─────────────────────────────────────────
 DATABASE_URL_TEST=postgresql://shop:shop@localhost:5432/shop_test?schema=public
@@ -1050,7 +1050,7 @@ DATABASE_URL_TEST=postgresql://shop:shop@localhost:5432/shop_test?schema=public
 | `SESSION_COOKIE_NAME`         | `admin_session`    | Cookie non-deviné                             |
 | Cookie flags (code)           | `HttpOnly; Secure; SameSite=Lax` | Pas accessible JS, HTTPS-only, OK pour navigations normales |
 | `LOG_LEVEL`                   | `info` prod / `debug` dev | Pas de `trace` en prod                   |
-| `SHIPPING_FLAT_CENTS`         | `590`              | À ajuster quand l'API transport arrive         |
+| `SHIPPING_FLAT_MINOR`         | `590`              | À ajuster quand l'API transport arrive         |
 
 ### Secrets à NE PAS commit
 
@@ -1074,11 +1074,11 @@ Format : contexte · décision · conséquence. Gardés dans `docs/decisions/000
 **Décision** : interface `PaymentProvider` (4 méthodes : `createIntent`, `capture`, `refund`, `verifyWebhook`) dans `src/domain/payment/`. Stripe implémenté ; Mobile Money stubbé. Sélection via env `PAYMENT_PROVIDER`.
 **Conséquence** : checkout, webhooks et refunds n'importent jamais `stripe` directement → bascule de provider = zéro changement dans `src/server/**`.
 
-### ADR-003 — Prix en centimes (Int) partout, devise en string ISO-4217
+### ADR-003 — Prix en minor units ISO-4217 (Int) partout, devise en string ISO-4217
 
-**Contexte** : les `Float` provoquent des erreurs d'arrondi cumulatives sur les totaux.
-**Décision** : tous les champs prix = `Int` centimes. Affichage = helper `<Money cents={...} currency="EUR" />` qui formate locale.
-**Conséquence** : impossibilité de `199.999999` ; formatage cohérent ; export comptable simplifié (entier).
+**Contexte** : les `Float` provoquent des erreurs d'arrondi cumulatives sur les totaux ; « centimes » est ambigu pour les devises à 0 décimale (XAF, XOF, JPY, KRW) et constitue une fuite d'implémentation EUR dans le contrat de données.
+**Décision** : tous les champs prix sont des `Int` minor units ISO-4217 de la devise portée par la ligne (`Variant`, `Cart`, `Order`, `OrderItem`, `Payment`). Le module `src/domain/money.ts` est l'unique frontière entre forme humaine et forme stockée (cf. ADR dédiée `docs/decisions/0003-prix-minor-units.md`). Affichage = helper `<Money amountMinor={...} currency="EUR" />` qui formate locale.
+**Conséquence** : impossibilité de `199.999999` ; formatage cohérent quelle que soit la devise (XAF n'a pas de décimale) ; export comptable simplifié (entier). La devise n'a **pas** de défaut (`Order.currency` et `Cart.currency` sont obligatoires, affectées depuis `SHOP_CURRENCY` à la création — DAT §10) : une boutique qui vend en XAF ne peut pas produire silencieusement une commande en EUR.
 
 ### ADR-004 — Stock décrémenté à la confirmation de paiement, pas au panier
 
