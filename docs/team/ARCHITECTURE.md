@@ -71,7 +71,7 @@ shop/
 │   │   │   └── admin/...
 │   │   └── middleware.ts         # protection routes /admin/*
 │   ├── domain/                   # logique métier pure, aucune dépendance Next/Prisma
-│   │   ├── pricing.ts            # calcul totaux depuis Money (minor units ISO 4217, cf. ADR-0003)
+│   │   ├── pricing.ts            # calcul totaux depuis minor units (Int)
 │   │   ├── stock.ts              # règles disponibilité/décrément
 │   │   ├── order.ts              # transitions de statut
 │   │   └── payment/
@@ -96,7 +96,7 @@ shop/
 │   │   │   ├── cart-button.tsx
 │   │   │   ├── product-card.tsx
 │   │   │   ├── variant-picker.tsx
-│   │   │   └── money.tsx         # format Money → affichage (cf. ADR-0003)
+│   │   │   └── money.tsx         # format minor units → affichage
 │   │   └── styles/
 │   │       └── globals.css
 │   └── types/
@@ -1084,11 +1084,11 @@ Format : contexte · décision · conséquence. Gardés dans `docs/decisions/000
 **Décision** : interface `PaymentProvider` (4 méthodes : `createIntent`, `capture`, `refund`, `verifyWebhook`) dans `src/domain/payment/`. Stripe implémenté ; Mobile Money stubbé. Sélection via env `PAYMENT_PROVIDER`.
 **Conséquence** : checkout, webhooks et refunds n'importent jamais `stripe` directement → bascule de provider = zéro changement dans `src/server/**`.
 
-### ADR-003 — Prix en minor units ISO 4217 (amendée audit D3)
+### ADR-003 — Prix en minor units ISO-4217 (Int) partout, devise en string ISO-4217
 
-**Contexte** : les `Float` provoquent des erreurs d'arrondi cumulatives sur les totaux ; « centimes » est ambigu pour les devises à 0 décimale (XAF/JPY/KRW).
-**Décision** : tous les champs prix = `Int` **minor units** de la devise portée par la ligne. **Une seule fonction** de conversion existe (`src/domain/money.ts`, helpers `toMinorUnits` / `fromMinorUnits`) ; aucun `*100`/`/100` dans le code ; `Money.amountMinor` passé tel quel à Stripe.
-**Conséquence** : impossible d'avoir `199.999999` ; formatage cohérent multi-devise ; alignement ISO 4217 et Stripe-native by design. Voir ADR-0003 pour le tableau complet des devises MVP.
+**Contexte** : les `Float` provoquent des erreurs d'arrondi cumulatives sur les totaux ; « centimes » est ambigu pour les devises à 0 décimale (XAF, XOF, JPY, KRW) et constitue une fuite d'implémentation EUR dans le contrat de données.
+**Décision** : tous les champs prix sont des `Int` minor units ISO-4217 de la devise portée par la ligne (`Variant`, `Cart`, `Order`, `OrderItem`, `Payment`). Le module `src/domain/money.ts` est l'unique frontière entre forme humaine et forme stockée (cf. ADR dédiée `docs/decisions/0003-prix-minor-units.md`). Affichage = helper `<Money amountMinor={...} currency="EUR" />` qui formate locale.
+**Conséquence** : impossibilité d'avoir `199.999999` ; formatage cohérent quelle que soit la devise (XAF n'a pas de décimale) ; export comptable simplifié (entier). La devise n'a **pas** de défaut (`Order.currency` et `Cart.currency` sont obligatoires, affectées depuis `SHOP_CURRENCY` à la création — DAT §10) : une boutique qui vend en XAF ne peut pas produire silencieusement une commande en EUR.
 
 ### ADR-004 — Stock décrémenté à la confirmation de paiement, pas au panier
 
