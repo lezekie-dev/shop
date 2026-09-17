@@ -1,0 +1,41 @@
+/* ============================================================
+   Coquille publique (header + main) — 100 % tokens.
+   Importé une fois par src/app/layout.tsx, avec tokens.css.
+   ============================================================ */
+
+.site-header {
+  background: var(--bg-raised);
+  border-bottom: 1.5px solid var(--border-soft);
+  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.site-header__brand {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  text-decoration: none;
+  letter-spacing: -0.015em;
+}
+.site-header__brand:hover {
+  color: var(--text-strong);
+  text-decoration: none;
+}
+.site-header__nav {
+  display: flex;
+  gap: var(--sp-4);
+  font-size: var(--fs-small);
+  align-items: center;
+}
+.site-header__admin {
+  margin-left: auto;
+  color: var(--text-muted);
+}
+
+.site-main {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--sp-4);
+}

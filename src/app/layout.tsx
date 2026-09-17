@@ -1,5 +1,34 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Fraunces, Inter } from "next/font/google";
+
+import "@/ui/styles/tokens.css";
+import "@/ui/styles/shell.css";
+
+import { SiteHeader } from "@/ui/components/site-header";
+
+/*
+ * Les deux polices du design system sont chargées via next/font : Next les
+ * télécharge au build et les sert depuis le domaine de l'app (aucune requête
+ * vers Google au runtime, aucun FOUT sur réseau 3G).
+ *
+ * Chaque police écrit SA variable de token sur <body> :
+ *   --font-display → Fraunces (titrage éditorial)
+ *   --font-body    → Inter   (corps de texte)
+ * tokens.css reste la seule source des valeurs de repli (Georgia, system-ui) :
+ * si une police ne se charge pas, la pile de secours s'applique inchangée.
+ */
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-display",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-body",
+});
 
 export const metadata: Metadata = {
   title: "Shop",
@@ -9,37 +38,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="fr">
-      <body
-        style={{
-          margin: 0,
-          fontFamily:
-            "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
-          background: "#fafafa",
-          color: "#111",
-          lineHeight: 1.5,
-        }}
-      >
-        <header
-          style={{
-            background: "#fff",
-            borderBottom: "1px solid #e5e5e5",
-            padding: "0.75rem 1rem",
-            display: "flex",
-            gap: "1rem",
-            alignItems: "center",
-          }}
-        >
-          <a href="/" style={{ fontWeight: 700, textDecoration: "none", color: "#111" }}>
-            Shop
-          </a>
-          <nav style={{ display: "flex", gap: "0.75rem", fontSize: "0.95rem" }}>
-            <a href="/products">Catalogue</a>
-            <a href="/admin/login" style={{ marginLeft: "auto", color: "#666" }}>
-            Admin
-            </a>
-          </nav>
-        </header>
-        <main style={{ maxWidth: 960, margin: "0 auto", padding: "1rem" }}>{children}</main>
+      <body className={`${fraunces.variable} ${inter.variable}`}>
+        <SiteHeader />
+        <main className="site-main">{children}</main>
       </body>
     </html>
   );
