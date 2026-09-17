@@ -345,7 +345,9 @@ model OrderItem {
 // Paiements & logistique
 // ─────────────────────────────────────────────────────────────────────
 
-enum PaymentStatus { PENDING SUCCEEDED FAILED REFUNDED }
+// REFUND_PENDING = refund soumis au PSP, en attente de webhook (charge.refunded).
+// REFUNDED = confirmation reçue. Source de vérité du refund — voir ADR-0002 S1-016.
+enum PaymentStatus { PENDING SUCCEEDED FAILED REFUND_PENDING REFUNDED }
 
 model Payment {
   id            String        @id @default(cuid())
