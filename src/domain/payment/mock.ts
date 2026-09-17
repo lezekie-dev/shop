@@ -35,6 +35,10 @@
  */
 
 import { createId } from "@paralleldrive/cuid2";
+import {
+  parseSimulatedWebhook,
+  SIMULATED_SIGNATURE_HEADER,
+} from "@/domain/payment/simulated-webhook";
 import type {
   CaptureResult,
   CreateIntentInput,
@@ -49,7 +53,7 @@ import type {
 const THIRTY_MIN_MS = 30 * 60 * 1000;
 
 /** Header de signature du PSP simulé (même rôle que `stripe-signature`). */
-export const MOCK_SIGNATURE_HEADER = "x-mock-signature";
+export const MOCK_SIGNATURE_HEADER = SIMULATED_SIGNATURE_HEADER;
 
 /** Scénarios simulables, pilotés par `metadata.scenario`. */
 export type MockScenario = "success" | "failure" | "pending" | "delayed";
@@ -133,48 +137,12 @@ export class MockPaymentProvider implements PaymentProvider {
   }
 
   /**
-   * Vérification de webhook simulée — même contrat qu'un vrai PSP :
-   *   - header `x-mock-signature` (optionnel en mode mock : aucun secret réel
-   *     n'est partagé, mais le chemin de vérification existe pour que la
-   *     bascule vers un vrai HMAC soit un simple remplacement) ;
-   *   - body JSON `{ eventKey, type, data }`.
-   * `eventKey` est OBLIGATOIRE : c'est la clé d'idempotence qui alimente
-   * `WebhookEvent @@unique([provider, eventKey])`.
+   * Vérification de webhook simulée — voir `parseSimulatedWebhook` : même
+   * contrat qu'un vrai PSP (header `x-mock-signature` optionnel + body JSON
+   * `{ eventKey, type, data }`), `eventKey` obligatoire car c'est la clé
+   * d'idempotence de `WebhookEvent @@unique([provider, eventKey])`.
    */
   async verifyWebhook(input: VerifyWebhookInput): Promise<VerifiedWebhook> {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(input.rawBody);
-    } catch {
-      throw new Error("MockPaymentProvider.verifyWebhook: body JSON invalide");
-    }
-    if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("MockPaymentProvider.verifyWebhook: body attendu = objet JSON");
-    }
-    const body = parsed as Record<string, unknown>;
-    const eventKey = body.eventKey;
-    if (typeof eventKey !== "string" || eventKey.trim() === "") {
-      throw new Error(
-        "MockPaymentProvider.verifyWebhook: eventKey manquant (clé d'idempotence requise)",
-      );
-    }
-    const type = body.type;
-    if (typeof type !== "string" || type.trim() === "") {
-      throw new Error("MockPaymentProvider.verifyWebhook: type manquant");
-    }
-
-    const signature = input.headers[MOCK_SIGNATURE_HEADER] ?? input.headers["X-Mock-Signature"];
-    if (signature !== undefined && signature.trim() === "") {
-      throw new Error(
-        "MockPaymentProvider.verifyWebhook: header x-mock-signature présent mais vide",
-      );
-    }
-
-    return {
-      provider: this.name,
-      eventKey,
-      type,
-      data: body.data ?? null,
-    };
+    return parseSimulatedWebhook(this.name, input);
   }
 }
