@@ -128,3 +128,15 @@ export async function requireAdmin(): Promise<AdminUser> {
 export async function deleteSessionByToken(token: string): Promise<void> {
   await prisma.session.deleteMany({ where: { token } });
 }
+
+/**
+ * Garde d'authentification pour les route handlers (`/api/admin/**`).
+ *
+ * Équivalent requête de `requireAdmin()` : même cookie, même lookup de session
+ * en base, mais renvoie `null` au lieu de rediriger — un `fetch` XHR doit
+ * recevoir 401, pas une redirection HTML vers /admin/login.
+ */
+export async function requireAdminApi(req: NextRequest): Promise<AdminUser | null> {
+  const found = await getSessionFromRequest(req);
+  return found?.user ?? null;
+}

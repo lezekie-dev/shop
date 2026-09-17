@@ -1,12 +1,20 @@
 /**
- * Server layer — orchestration du checkout invité.
+ * Server layer — orchestration du checkout (multi-méthodes de paiement).
  *
  * Deux fonctions principales :
  *  - createOrderFromCart : crée Customer + Address + Order + OrderItem +
  *    Payment dans une seule transaction. Décrémente Stock.reserved
  *    (pas Stock.quantity — c'est ADR-004). Marque Cart CONVERTED.
- *  - markOrderPaid       : appelé par le webhook mock → payment succeeded.
- *    Décrémente Stock.quantity - reserved et passe la commande à PAID.
+ *  - markOrderPaid       : applique le verdict "succeeded" à une commande.
+ *    Délègue à `applyPaymentOutcome` (src/server/payments.ts) — la MÊME
+ *    implémentation que le callback Mobile Money et la validation du virement.
+ *
+ * Méthodes supportées (voir `listAvailableProviders`) :
+ *  - "mock"          : capture immédiate → Order PAID dans la requête.
+ *  - "mobile_money"  : intent + redirectUrl USSD → Order PENDING_PAYMENT,
+ *                      confirmée par le callback de l'opérateur.
+ *  - "bank_transfer" : intent + redirectUrl instructions IBAN → Order
+ *                      PENDING_PAYMENT, confirmée par l'admin (mark-paid).
  *
  * Invariants respectés :
  *  - Toutes les écritures sont transactionnelles (prisma.$transaction).
@@ -18,6 +26,16 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import { generateOrderNumber } from "@/domain/order";
+import { applyPaymentOutcome } from "@/server/payments";
+
+/** Méthodes de paiement acceptées par le checkout. */
+export type CheckoutPaymentMethod = "mock" | "mobile_money" | "bank_transfer";
+
+export const CHECKOUT_PAYMENT_METHODS: readonly CheckoutPaymentMethod[] = [
+  "mock",
+  "mobile_money",
+  "bank_transfer",
+];
 
 export class CheckoutError extends Error {
   constructor(
@@ -64,8 +82,8 @@ export type CheckoutInput = {
   shippingAddress: AddressInput;
   /** Adresse de facturation (si différente) */
   billingAddress?: AddressInput | undefined;
-  /** Méthode de paiement ("mock" uniquement en S2) */
-  paymentMethod: "mock";
+  /** Méthode de paiement — voir CHECKOUT_PAYMENT_METHODS */
+  paymentMethod: CheckoutPaymentMethod;
   /** Forfait livraison en centimes (par défaut lu depuis env) */
   shippingCents: number;
   /** Devise (par défaut "EUR") */
@@ -76,7 +94,29 @@ export type CreateOrderResult = {
   orderId: string;
   orderNumber: string;
   totalCents: number;
+  currency: string;
   paymentRef: string;
+  paymentProvider: string;
+  /** Renseigné par les méthodes asynchrones (Mobile Money, virement). */
+  redirectUrl?: string | undefined;
+};
+
+/**
+ * Contexte transmis à `createPaymentIntent` — la route checkout le traduit en
+ * `CreateIntentInput` pour le provider sélectionné.
+ */
+export type PaymentIntentContext = {
+  orderId: string;
+  amountCents: number;
+  currency: string;
+  customer: { email: string; name?: string | undefined };
+  metadata: Record<string, string>;
+};
+
+export type PaymentIntentOutcome = {
+  providerRef: string;
+  expiresAt: Date | null;
+  redirectUrl?: string | undefined;
 };
 
 // ─────────────────────────────────────────────────────────────────────
@@ -115,10 +155,10 @@ export async function createOrderFromCart(
   cartId: string,
   input: CheckoutInput,
   params: {
-    createPaymentIntent: () => Promise<{ providerRef: string; expiresAt: Date | null }>;
+    createPaymentIntent: (ctx: PaymentIntentContext) => Promise<PaymentIntentOutcome>;
   },
 ): Promise<CreateOrderResult> {
-  if (input.paymentMethod !== "mock") {
+  if (!CHECKOUT_PAYMENT_METHODS.includes(input.paymentMethod)) {
     throw new CheckoutError(
       `Méthode de paiement non supportée: ${input.paymentMethod}`,
       "PAYMENT_PROVIDER_INVALID",
@@ -216,6 +256,12 @@ export async function createOrderFromCart(
     const totalCents = subtotalCents + shippingCents;
     const currency = input.currency || cart.currency || "EUR";
 
+    // Nom affichable du client (passé au PSP), robuste aux champs null.
+    const customerName = [customer.firstName, customer.lastName]
+      .filter((part): part is string => Boolean(part))
+      .join(" ")
+      .trim();
+
     // 5) Numéro de commande lisible
     const seq = await nextOrderSeq(tx, year);
     const orderNumber = generateOrderNumber(seq, year);
@@ -231,7 +277,7 @@ export async function createOrderFromCart(
         shippingCents,
         totalCents,
         currency,
-        paymentProvider: "mock",
+        paymentProvider: input.paymentMethod,
         paymentRef: null, // mis après createPaymentIntent ci-dessous
         items: {
           create: cart.items.map((i) => ({
@@ -266,8 +312,19 @@ export async function createOrderFromCart(
       data: { status: "CONVERTED", updatedAt: new Date() },
     });
 
-    // 7) Payment intent (mock) — providerRef sert d'id côté PSP
-    const intent = await params.createPaymentIntent();
+    // 7) Payment intent chez le PSP — providerRef sert d'id côté PSP.
+    //    Le provider est injecté par l'appelant (registry) : ce module ne
+    //    connaît aucun PSP concret (ADR-002).
+    const intent = await params.createPaymentIntent({
+      orderId: order.id,
+      amountCents: totalCents,
+      currency,
+      customer: {
+        email: customer.email,
+        ...(customerName ? { name: customerName } : {}),
+      },
+      metadata: { cartId, orderNumber },
+    });
     await tx.order.update({
       where: { id: order.id },
       data: { paymentRef: intent.providerRef },
@@ -276,7 +333,7 @@ export async function createOrderFromCart(
     await tx.payment.create({
       data: {
         orderId: order.id,
-        provider: "mock",
+        provider: input.paymentMethod,
         providerRef: intent.providerRef,
         amountCents: totalCents,
         currency,
@@ -288,7 +345,10 @@ export async function createOrderFromCart(
       orderId: order.id,
       orderNumber,
       totalCents,
+      currency,
       paymentRef: intent.providerRef,
+      paymentProvider: input.paymentMethod,
+      ...(intent.redirectUrl !== undefined ? { redirectUrl: intent.redirectUrl } : {}),
     };
   });
 }
@@ -298,60 +358,13 @@ export async function createOrderFromCart(
 // ─────────────────────────────────────────────────────────────────────
 
 /**
- * Appelé après confirmation du paiement (webhook ou capture immédiate mock) :
- *  - Order.status → PAID, paidAt = now
- *  - Payment.status → SUCCEEDED
- *  - Stock.quantity -= reserved (la quantité réelle part)
- *  - Stock.reserved → 0
+ * Applique le verdict "succeeded" à une commande (capture immédiate d'un
+ * paiement synchrone, callback PSP, ou validation manuelle par l'admin).
  *
- * Renvoie l'id de la commande. Idempotent : si déjà PAID, renvoie sans rien faire.
+ * ⚠ Implémentation UNIQUE dans `src/server/payments.ts` : ce wrapper existe
+ * pour garder une API lisible côté checkout.
  */
 export async function markOrderPaid(orderId: string): Promise<{ orderId: string }> {
-  await prisma.$transaction(async (tx) => {
-    const order = await tx.order.findUnique({
-      where: { id: orderId },
-      include: { items: true, payments: true },
-    });
-    if (!order) {
-      throw new CheckoutError(`Order introuvable: ${orderId}`, "CART_NOT_FOUND");
-    }
-    if (order.status === "PAID") {
-      // déjà payé → no-op idempotent
-      return;
-    }
-    if (order.status !== "PENDING_PAYMENT") {
-      throw new CheckoutError(
-        `Order ${orderId} ne peut pas passer à PAID depuis ${order.status}`,
-        "PAYMENT_FAILED",
-      );
-    }
-
-    const now = new Date();
-
-    // Décrément final du stock : quantity -= reserved, reserved -> 0
-    for (const item of order.items) {
-      const stock = await tx.stock.findUnique({ where: { variantId: item.variantId } });
-      const reserved = stock?.reserved ?? 0;
-      const quantity = stock?.quantity ?? 0;
-      const reservedForThisItem = Math.min(reserved, item.quantity);
-      const newQuantity = Math.max(0, quantity - reservedForThisItem);
-      const newReserved = Math.max(0, reserved - reservedForThisItem);
-      await tx.stock.update({
-        where: { variantId: item.variantId },
-        data: { quantity: newQuantity, reserved: newReserved },
-      });
-    }
-
-    await tx.order.update({
-      where: { id: orderId },
-      data: { status: "PAID", paidAt: now },
-    });
-
-    await tx.payment.updateMany({
-      where: { orderId, status: "PENDING" },
-      data: { status: "SUCCEEDED" },
-    });
-  });
-
+  await applyPaymentOutcome(orderId, null, "succeeded");
   return { orderId };
 }

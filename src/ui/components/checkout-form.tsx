@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import {
   AddressForm,
@@ -18,6 +18,38 @@ export type CheckoutItem = {
   quantity: number;
 };
 
+type ProviderOption = {
+  name: "mock" | "mobile_money" | "bank_transfer" | "stripe";
+  label: string;
+  available: boolean;
+  reason?: string;
+};
+
+type Method = "mock" | "mobile_money" | "bank_transfer";
+type Operator = "ORANGE" | "MTN";
+
+const METHOD_HINTS: Record<Method, string> = {
+  mock: "Mode test : aucun débit réel, la commande est validée immédiatement.",
+  mobile_money:
+    "Vous recevrez une demande de paiement sur votre téléphone (Orange Money / MTN MoMo).",
+  bank_transfer:
+    "Vous recevrez l'IBAN et la référence à indiquer. Validation à réception du virement.",
+};
+
+const inputStyle: React.CSSProperties = {
+  padding: "0.5rem",
+  border: "1px solid #ccc",
+  borderRadius: 6,
+  fontSize: "0.95rem",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "0.25rem",
+  fontSize: "0.9rem",
+  color: "#333",
+};
+
 export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
   const router = useRouter();
 
@@ -27,15 +59,46 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState<AddressValue>(DEFAULT_ADDRESS);
   const [billingSame, setBillingSame] = useState(true);
-  const [paymentMethod] = useState<"mock">("mock");
+  const [method, setMethod] = useState<Method>("mock");
+  const [operator, setOperator] = useState<Operator>("ORANGE");
+  const [providers, setProviders] = useState<ProviderOption[] | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Les méthodes réellement utilisables sur cette instance viennent du
+  // serveur (listAvailableProviders) : l'UI n'invente rien.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/payments/providers", { cache: "no-store" });
+        const data = (await res.json()) as { providers?: ProviderOption[] };
+        if (!cancelled && data.providers) {
+          const usable = data.providers.filter((p) => p.available);
+          setProviders(usable);
+          if (usable.length > 0 && !usable.some((p) => p.name === "mock")) {
+            setMethod(usable[0]!.name as Method);
+          }
+        }
+      } catch {
+        // Le serveur est la source de vérité : en cas d'échec réseau on garde
+        // la méthode par défaut et la soumission remontera l'erreur réelle.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     if (!isAddressComplete(address)) {
       setError("Adresse incomplète");
+      return;
+    }
+    if (method === "mobile_money" && !phone) {
+      setError("Numéro de téléphone requis pour Mobile Money");
       return;
     }
     setSubmitting(true);
@@ -56,18 +119,26 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
             country: address.country.toUpperCase(),
           },
           billingAddressSame: billingSame,
-          paymentMethod,
+          paymentMethod: method,
+          ...(method === "mobile_money" ? { operator } : {}),
         }),
       });
       const data = (await res.json().catch(() => ({}))) as {
         orderId?: string;
         orderNumber?: string;
+        redirectUrl?: string | null;
         error?: string;
       };
       if (!res.ok || !data.orderId) {
         throw new Error(data.error ?? `Erreur ${res.status}`);
       }
-      router.push(`/checkout/success?orderId=${data.orderId}&n=${encodeURIComponent(data.orderNumber ?? "")}`);
+      if (data.redirectUrl) {
+        router.push(data.redirectUrl);
+        return;
+      }
+      router.push(
+        `/checkout/success?orderId=${data.orderId}&n=${encodeURIComponent(data.orderNumber ?? "")}`,
+      );
     } catch (e2) {
       setError(e2 instanceof Error ? e2.message : "Erreur lors de la commande");
     } finally {
@@ -75,18 +146,9 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    padding: "0.5rem",
-    border: "1px solid #ccc",
-    borderRadius: 6,
-    fontSize: "0.95rem",
-  };
-  const labelStyle: React.CSSProperties = {
-    display: "grid",
-    gap: "0.25rem",
-    fontSize: "0.9rem",
-    color: "#333",
-  };
+  const usableProviders = providers ?? [
+    { name: "mock" as const, label: "Paiement simulé (test)", available: true },
+  ];
 
   return (
     <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1.5rem" }}>
@@ -130,13 +192,14 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
             </label>
           </div>
           <label style={labelStyle}>
-            Téléphone
+            Téléphone{method === "mobile_money" && <span style={{ color: "#b00020" }}>*</span>}
             <input
               type="tel"
               name="phone"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               disabled={submitting}
+              required={method === "mobile_money"}
               style={inputStyle}
             />
           </label>
@@ -167,9 +230,57 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
 
       <fieldset style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "1rem", background: "#fff" }}>
         <legend style={{ padding: "0 0.5rem", fontWeight: 600 }}>Paiement</legend>
-        <p style={{ margin: 0, fontSize: "0.9rem", color: "#666" }}>
-          Mode de paiement actif : <strong>Mock (test)</strong> — aucune carte n&apos;est débitée.
-        </p>
+        <div style={{ display: "grid", gap: "0.6rem" }}>
+          {usableProviders.map((p) => {
+            const selectable = p.name !== "stripe";
+            return (
+              <label
+                key={p.name}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "auto 1fr",
+                  gap: "0.6rem",
+                  alignItems: "start",
+                  padding: "0.5rem",
+                  border: method === p.name ? "1px solid #111" : "1px solid transparent",
+                  borderRadius: 6,
+                  cursor: selectable ? "pointer" : "not-allowed",
+                }}
+              >
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value={p.name}
+                  checked={method === p.name}
+                  onChange={() => setMethod(p.name as Method)}
+                  disabled={submitting || !selectable}
+                />
+                <span>
+                  <strong style={{ display: "block" }}>{p.label}</strong>
+                  <span style={{ color: "#666", fontSize: "0.85rem" }}>
+                    {METHOD_HINTS[p.name as Method] ?? ""}
+                  </span>
+                </span>
+              </label>
+            );
+          })}
+
+          {method === "mobile_money" && (
+            <label style={labelStyle}>
+              Opérateur
+              <select
+                name="operator"
+                value={operator}
+                onChange={(e) => setOperator(e.target.value as Operator)}
+                disabled={submitting}
+                style={inputStyle}
+              >
+                <option value="ORANGE">Orange Money</option>
+                <option value="MTN">MTN Mobile Money</option>
+              </select>
+            </label>
+          )}
+        </div>
       </fieldset>
 
       {error && (

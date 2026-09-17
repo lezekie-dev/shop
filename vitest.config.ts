@@ -6,6 +6,11 @@ export default defineConfig({
     environment: "node",
     include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
     testTimeout: 30_000,
+    // Les hooks `beforeEach` font un TRUNCATE de toutes les tables. Quand un
+    // second process (agent, run parallèle, CI) travaille sur la même
+    // DATABASE_URL, le TRUNCATE attend les verrous et dépasse le défaut de
+    // 10 s → échec « Hook timed out » sans rapport avec le test lui-même.
+    hookTimeout: 60_000,
     // Les tests d'intégration partagent la même DB Postgres et truncent
     // toutes les tables en beforeEach. Si deux fichiers s'exécutent en
     // parallèle, le TRUNCATE d'un fichier interrompt les requêtes de
