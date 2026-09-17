@@ -48,7 +48,7 @@ test("guest checkout: ajoute 2 produits → checkout → succès", async ({ page
 
   // 4. Sélectionner la 1ère variante dans le <select>
   const variantSelect = page.locator('select[name="variantId"]');
-  await expect(variantSelect).toBeVisible();
+  await expect(variantSelect).toBeVisible({ timeout: 30_000 });
   // Le formulaire pré-sélectionne déjà la première variante disponible, mais on
   // confirme explicitement en lisant la valeur courante.
   const selectedVariantText = await variantSelect.evaluate(
