@@ -17,12 +17,15 @@
 2. [Structure de dossiers — règles d'or](#2-structure-de-dossiers--règles-dor)
 3. [Stratégie de branches](#3-stratégie-de-branches)
 4. [Format de commit (Conventional Commits)](#4-format-de-commit-conventional-commits)
-5. [Gestion de l'argent — centimes](#5-gestion-de-largent--centimes)
+5. [Gestion de l'argent — minor units ISO 4217](#5-gestion-de-largent--minor-units-iso-4217)
 6. [Gestion des erreurs](#6-gestion-des-erreurs)
 7. [Style de code](#7-style-de-code)
 8. [Tests — quoi tester, où](#8-tests--quoi-tester-où)
 9. [Ce qu'on ne fait PAS sans ADR](#9-ce-quon-ne-fait-pas-sans-adr)
 10. [Vie de l'équipe — rituels](#10-vie-de-léquipe--rituels)
+11. [Middleware — ce qu'il couvre, ce qu'il ne couvre PAS](#11-middleware--ce-quil-couvre-ce-quil-ne-couvre-pas)
+12. [Transactions DB — règles d'isolation et verrous](#12-transactions-db--règles-disolation-et-verrous)
+13. [Capacités par rôle — matrice STAFF / ADMIN](#13-capacités-par-rôle--matrice-staff--admin)
 
 ---
 
@@ -217,22 +220,41 @@ test(payment): ajout unit verifyWebhook signature invalide
 
 ---
 
-## 5. Gestion de l'argent — centimes
+## 5. Gestion de l'argent — minor units ISO 4217
 
-**Règle absolue** (cf. ADR-0003) :
+**Règle absolue** (cf. ADR-0003 amendée — audit D3) :
 
-> Tout prix dans le code et en base est un entier **`Int` centimes**.
-> La devise est un `string` ISO-4217 (`"EUR"`, `"XAF"`).
+> Tout prix dans le code et en base est un entier **`Int` minor units
+> de la devise ISO 4217**. La devise est un `string` ISO-4217
+> (`"EUR"`, `"XAF"`). **Une seule fonction de conversion** existe —
+> `toMinorUnits` / `fromMinorUnits` dans `src/domain/money.ts` — et
+> c'est l'**unique** point de passage entre forme humaine (`"19.99"`)
+> et entier stocké.
+
+### Vocabulaire
+
+- On ne parle **plus** de « centimes » dans le code ni dans les ADR.
+  Pour XAF/JPY/KRW ça n'a aucun sens (0 décimale).
+- Le type de référence est `Money = { amountMinor: number; currency: string }`.
+- Les colonnes DB historiques s'appellent encore `priceCents`,
+  `amountCents`, etc. (dette de naming documentée dans ADR-0003). Leur
+  sémantique est désormais « **minor units** de la devise portée par
+  la ligne ».
 
 ### Ce qu'on ne fait JAMAIS
 
 - ❌ `Float` ou `Decimal` pour un prix (rounding cumulatif).
-- ❌ `priceEuros: 19.99` — toujours `priceCents: 1999`.
-- ❌ Calcul `Math.round(value * 100)` côté UI → la conversion est faite
-  au moment de la saisie, **une seule fois**, et stockée en centimes.
+- ❌ `priceEuros: 19.99` — toujours `Money { amountMinor: 1999, currency: "EUR" }`.
+- ❌ `amount * 100` ou `amount / 100` **où que ce soit** dans le code.
+  Tout passe par `toMinorUnits` / `fromMinorUnits`. C'est la décision
+  de l'audit D3 : la même conversion sert au stockage et au paiement,
+  donc plus de facteur 100 possible.
+- ❌ `Int` de prix **nu** (sans `Money` autour) en dehors de
+  `src/domain/money.ts`. Le compilateur TypeScript ne peut pas le
+  garantir seul → c'est une règle de code review (cf. §10 checklist).
 - ❌ Comparaison de prix entre deux devises sans conversion explicite.
 - ❌ Affichage manuel du prix dans un template → on passe par
-  `<Money cents={…} currency={…} />` (`src/ui/components/money.tsx`).
+  `<Money value={money} />` (`src/ui/components/money.tsx`).
 
 ### Affichage
 
@@ -240,19 +262,33 @@ test(payment): ajout unit verifyWebhook signature invalide
 - Format XAF : `12 500 FCFA` (pas de décimales, code `XAF`).
 - Le helper `<Money>` est l'unique point de formatage ; **aucun**
   `toLocaleString` direct dans les composants.
+- `<Money>` choisit la locale et le nombre de décimales **selon
+  `value.currency`**, pas selon un code en dur.
 
 ### Calculs
 
 Tous les calculs sont dans `src/domain/pricing.ts`. Tout nouveau calcul
 de prix doit y être ajouté et couvert par `tests/unit/pricing.test.ts`.
+Les signatures prennent/retournent `Money`.
 
 ```ts
 // ✅ Correct
-const subtotal = computeSubtotal(items); // items: { unitPriceCents, quantity }[]
+const subtotal: Money = computeSubtotal(items); // items: { unitPrice: Money, quantity }[]
 
 // ❌ Interdit
 const subtotal = items.reduce((s, i) => s + i.unitPriceEuros * i.quantity, 0);
+
+// ❌ Interdit
+const stripeAmount = money.amountMinor * 100; // confusion centimes ↔ major unit
 ```
+
+### Cohérence Stripe
+
+`Money.amountMinor` est passé **tel quel** à
+`PaymentIntent.amount` dans `src/domain/payment/stripe.ts`. Aucune
+multiplication, aucune division. Si la valeur est fausse, elle est
+fausse au même endroit en DB et côté PSP — un test unitaire sur
+l'adaptateur Stripe le détecte immédiatement.
 
 ---
 
@@ -353,10 +389,11 @@ export class InvalidOrderTransitionError extends DomainError {
 
 ```ts
 /**
- * Calcule le sous-total d'une commande en centimes.
- * Ne tient pas compte des remises ni des frais de port.
+ * Calcule le sous-total d'une commande en minor units ISO 4217
+ * (cf. ADR-0003 amendée). Ne tient pas compte des remises ni
+ * des frais de port.
  */
-export function computeSubtotal(items: OrderItem[]): number { … }
+export function computeSubtotal(items: OrderItem[]): Money { … }
 ```
 
 ### Imports
@@ -435,7 +472,7 @@ conséquence · alternatives écartées. Voir les 5 ADR verrouillées en S1 :
 | Changer les règles de `src/domain/`                            | La règle "pur TypeScript" est l'invariant central |
 | Modifier la stratégie de tests (niveau, pyramide)              | Change la couverture et la confiance |
 | Toucher à l'auth admin (cookie, hashing, middleware)          | Surface d'auth = P0 sécurité |
-| Changer la convention de prix (centimes, devise)               | Migration des données existantes |
+| Changer la convention de prix (minor units ISO 4217, devise)    | Migration des données existantes |
 | Ajouter un nouvel endpoint webhook                             | Idempotence + signature sont non triviaux |
 | Modifier les variables d'env ou leur validation                | Boot fail-fast → tout peut casser |
 
@@ -518,3 +555,257 @@ gh pr create --title "<titre carte>" --body "…"
 
 *Document rédigé en Sprint 1, validé par toute l'équipe. Toute
 modification passe par une PR avec ADR si elle touche un sujet de §9.*
+
+---
+
+## 11. Middleware — ce qu'il couvre, ce qu'il ne couvre PAS
+
+> Ajouté en Sprint 1 carte S1-014 (audit D2). Source : ADR-0001 +
+> arbitrage chief post-audit.
+
+**Règle** : `src/middleware.ts` ne couvre que les **pages**
+`/admin/:path*`. Les routes `/api/admin/*` sont protégées
+**uniquement** par `withApi({ requireAdmin: true })` côté handler.
+
+### Pourquoi le middleware Next 14 ne couvre PAS les routes API
+
+Le middleware Next.js (Edge runtime) s'exécute **avant** la résolution
+de la route, mais sur Next 14 App Router :
+
+- Pour matcher `/api/admin/*` depuis le middleware, on est tenté
+  d'écrire `matcher: ["/admin/:path*", "/api/admin/:path*"]` et de
+  faire `if (pathname.startsWith("/api/admin")) return NextResponse…`.
+- **Problème** : le middleware s'exécute en Edge runtime, qui n'a
+  **pas accès** à la DB Postgres (pas de driver Node natif, pas de
+  `crypto` complet). On ne peut donc pas y faire le `lookup Session`
+  dont on a besoin pour valider le cookie. Tout ce qu'on peut faire
+  côté middleware = vérifier la **présence** du cookie. Pas sa
+  validité. Pas sa révocation. Pas son expiration.
+- Résultat : si on laisse le middleware matcher `/api/admin/*`, on
+  croit protéger l'API, mais un cookie révoqué (déconnexion, vol,
+  expiration manuelle en DB) reste accepté. **Faille de sécurité
+  silencieuse.** Le seul garde-fou correct est la re-vérification
+  côté handler Node, qui elle a accès à la DB.
+
+### Ce qu'on fait
+
+```ts
+// src/middleware.ts — uniquement pages /admin/*
+export const config = {
+  matcher: ["/admin/:path*"],  // PAS /api/*
+};
+export async function middleware(req: NextRequest) {
+  const cookie = req.cookies.get(process.env.SESSION_COOKIE_NAME);
+  if (!cookie) return NextResponse.redirect(new URL("/admin/login", req.url));
+  // On NE vérifie PAS la DB ici. Présence du cookie = redirection
+  // évitée, mais la page serveur re-vérifiera côté Node.
+}
+```
+
+```ts
+// src/lib/api.ts — handler API admin
+export const POST = withApi({ requireAdmin: true, schema: … }, async ({ session }) => {
+  // withApi a déjà : SELECT Session WHERE tokenHash=…, vérifié expiresAt,
+  // vérifié user.role, mis session dans le context. Ici on est sûr.
+});
+```
+
+### Surface de code
+
+- `src/middleware.ts` : matcher = `["/admin/:path*"]` uniquement.
+- `src/lib/api.ts` : `withApi({ requireAdmin: true })` utilisé sur
+  toutes les routes sous `/api/admin/`.
+- Toute route `/api/admin/**` non couverte par `withApi({ requireAdmin: true })`
+  est un **bug** → bloquant en review.
+
+### Erreur classique à ne pas refaire
+
+> « Je mets le matcher sur `/admin/:path*` ET `/api/admin/:path*` pour
+> mutualiser. » → faux. L'API doit être re-protégée côté Node. Le
+> middleware fait juste un confort UX (rediriger `/admin` non loggué
+> vers `/admin/login`), l'API doit quant à elle **refuser**
+> structurellement les requêtes non authentifiées.
+
+---
+
+## 12. Transactions DB — règles d'isolation et verrous
+
+> Ajouté en Sprint 1 carte S1-014 (audit D8 / arbitrage D4).
+> Complète ADR-0004 (stock au paiement) et ADR-0005 (idempotence
+> webhooks).
+
+**Règle** : aucune écriture de stock ne peut descendre sous zéro —
+**ni par le code, ni par la base**.
+
+### Trois couches de défense
+
+1. **Isolation** : toutes les transactions applicatives utilisent
+   `READ COMMITTED` (défaut Postgres) **+ verrou explicite** sur la
+   ligne `Stock` :
+
+   ```ts
+   await prisma.$transaction(async (tx) => {
+     // 1. Verrou pessimiste sur la ligne Stock
+     const rows = await tx.$queryRaw<Stock[]>`
+       SELECT "variantId", "quantity", "reserved"
+       FROM "Stock"
+       WHERE "variantId" = ANY(${variantIds}::text[])
+       FOR UPDATE
+     `;
+     // 2. Vérif métier (src/domain/stock.ts)
+     assertCanReserve(rows, requested);
+     // 3. Écritures
+     await tx.stock.update({ where: { variantId }, data: { reserved: { increment: q } } });
+     // …
+   }, { isolationLevel: "ReadCommitted" });
+   ```
+
+   - Le `FOR UPDATE` bloque les lectures concurrentes d'autres
+     transactions qui voudraient réserver la même ligne, jusqu'au
+     `COMMIT`. Deux checkouts simultanés sur la dernière unité sont
+     sérialisés — un seul réussit, le second voit le stock mis à jour
+     et (a) réserve avec succès, ou (b) tombe sur
+     `StockUnavailableError`.
+   - `READ COMMITTED` suffit ici : la sérialisation est portée par le
+     verrou ligne, pas par l'isolation. On n'a pas besoin de
+     `SERIALIZABLE` (qui rajouterait des `SSI` coûteux et rollback
+     applicatif). Cf. alternatives écartées.
+
+2. **Emplacements du verrou** : le `SELECT … FOR UPDATE` est posé
+   **obligatoirement** dans deux endroits, sans exception :
+
+   - `src/server/checkout.ts` — transaction de passage en
+     `PENDING_PAYMENT` (réservation `Stock.reserved += requested`).
+   - `src/server/webhook-handlers.ts` — transaction du handler
+     `payment_intent.succeeded` (`Stock.reserved -= requested` +
+     `Stock.quantity -= requested` + `Order.status = PAID`).
+
+3. **Contrainte base** : la migration pose une contrainte `CHECK` en
+   SQL brut :
+
+   ```sql
+   -- Prisma ne supporte pas CHECK nativement → $executeRawUnsafe
+   ALTER TABLE "Stock"
+     ADD CONSTRAINT stock_nonneg
+     CHECK ("quantity" >= 0 AND "reserved" >= 0);
+   ```
+
+   - **Pourquoi SQL brut** : Prisma n'expose pas les contraintes
+     `CHECK` dans le DSL schema (à la date de la stack figée DAT §6).
+     On les pose en `$executeRawUnsafe` dans la même migration qui
+     crée la table.
+   - **Pourquoi `CHECK` en plus du verrou** : défense en profondeur.
+     Si un jour un dev ouvre une nouvelle transaction sans
+     `FOR UPDATE` (oubli, refactor maladroit), la contrainte CHECK
+     refuse l'écriture en base → erreur explicite plutôt que stock
+     négatif silencieux. La contrainte est la **ceinture** ; le
+     verrou applicatif est la **bretelle**.
+
+### Ce qu'on ne fait PAS
+
+- ❌ Transaction sans `FOR UPDATE` sur la ligne `Stock` impliquée.
+- ❌ Décrément « optimiste » basé sur une lecture hors transaction
+  (`const stock = await prisma.stock.findUnique(…); stock.quantity -= q;`).
+- ❌ Désactiver la contrainte `CHECK` (« on n'en a plus besoin »).
+  Elle est non-négociable.
+- ❌ Basculer l'isolation à `SERIALIZABLE` sans ADR (le coût est
+  significatif, et ici on n'en a pas besoin).
+
+### Tests obligatoires (intégration)
+
+- `tests/integration/stock.test.ts` : deux checkouts concurrents sur
+  la dernière unité → un seul `Order` en `PENDING_PAYMENT`, l'autre
+  reçoit `StockUnavailableError`. Couvre le verrou.
+- `tests/integration/stock.test.ts` : décrément forcé à -1 (via
+  `$executeRawUnsafe` qui bypasse la couche applicative) → la
+  contrainte `CHECK` refuse. Couvre la base.
+- `tests/integration/webhook.test.ts` : double livraison du même
+  `payment_intent.succeeded` → seul le premier appel décrémente
+  (idempotence ADR-0005), le second est no-op. Combiné avec la
+  contrainte, ça garantit que le webhook « rejoué » ne peut pas
+  faire descendre le stock sous zéro.
+
+---
+
+## 13. Capacités par rôle — matrice STAFF / ADMIN
+
+> Ajouté en Sprint 1 carte S1-014 (audit D7 — absence de `Role.STAFF`).
+> L'implémentation du contrôle d'accès est en **S4** (cf. backlog).
+> Cette matrice est la **source de vérité** : aucune route ne définit
+> son propre contrôle de droits à la main.
+
+**Règle d'or** : les routes admin s'autorisent **par capacité**
+(`can:orders:read`, `can:orders:transition:shipped`, …), **jamais**
+par `role === 'ADMIN'` en dur. Pourquoi : ajouter un rôle
+(aujourd'hui `STAFF`, demain `SUPER_ADMIN`, demain un partenaire)
+devient sinon une chasse au `if (role === 'ADMIN')` à travers tout
+le code. La capacité, elle, se teste à un seul endroit (le
+`withApi` helper) et s'attache aux rôles via une table de mapping.
+
+### Matrice MVP
+
+| Capacité                            | ADMIN | STAFF | Notes |
+|-------------------------------------|:-----:|:-----:|-------|
+| `auth:login`                        | ✅    | ✅    | Tous les utilisateurs internes. |
+| `dashboard:view`                    | ✅    | ✅    | Tableau de bord lecture. |
+| `products:read`                     | ✅    | ❌    | STAFF ne gère pas le catalogue. |
+| `products:write`                    | ✅    | ❌    | Idem. |
+| `categories:write`                  | ✅    | ❌    | Idem. |
+| `orders:read`                       | ✅    | ✅    | STAFF traite les commandes au quotidien. |
+| `orders:transition:preparing`       | ✅    | ✅    | `PAID → PREPARING`. |
+| `orders:transition:shipped`         | ✅    | ✅    | `PREPARING → SHIPPED` + saisie tracking. |
+| `orders:transition:delivered`       | ✅    | ✅    | `SHIPPED → DELIVERED`. |
+| `orders:transition:cancelled`       | ✅    | ❌    | Annulation = décision business, ADMIN only. |
+| `orders:refund`                     | ✅    | ❌    | Remboursement = impact financier, ADMIN only. |
+| `customers:read`                    | ✅    | ✅    | Lecture seule. |
+| `customers:write`                   | ✅    | ❌    | Édition fiche client = ADMIN only. |
+| `users:read`                        | ✅    | ❌    | Liste des utilisateurs internes. |
+| `users:write`                       | ✅    | ❌    | Création / désactivation. |
+| `settings:write`                    | ✅    | ❌    | Paramètres boutique, PSP, livraison. |
+| `audit-log:read`                    | ✅    | ❌    | Lecture des pistes d'audit. |
+
+### Comment ça se branche côté code (S4)
+
+```ts
+// src/lib/auth.ts (S4) — pseudo-code
+const CAPABILITIES: Record<Role, Capability[]> = {
+  ADMIN: [/* toutes */],
+  STAFF: [
+    "auth:login", "dashboard:view",
+    "orders:read", "orders:transition:preparing",
+    "orders:transition:shipped", "orders:transition:delivered",
+    "customers:read",
+  ],
+};
+
+export function can(user: User, capability: Capability): boolean {
+  return CAPABILITIES[user.role].includes(capability);
+}
+```
+
+```ts
+// src/lib/api.ts (S4) — extension de withApi
+export const POST = withApi({
+  requireAdmin: true,
+  capability: "orders:transition:shipped", // ← granularité réelle
+  schema: ShipOrderSchema,
+}, handler);
+```
+
+### Règle de revue
+
+- Toute route admin qui check `user.role === 'ADMIN'` est un **bug**
+  de capacité → on remplace par `requireCapability(...)`. Bloquant
+  en review.
+- Toute nouvelle capacité ajoutée au tableau ci-dessus doit l'être
+  dans une PR qui met à jour **les deux endroits** : ce §13 (source
+  de vérité) et la map `CAPABILITIES` en code.
+
+### Pourquoi ne pas juste faire `role === 'ADMIN'`
+
+Parce qu'au prochain rôle (livraison externe, comptable, partenaire
+marketplace) on ré-ouvre 30 routes pour ajouter un `|| role === '…'`.
+La capacité est testée une fois dans `withApi`, mappée une fois dans
+`CAPABILITIES`, et c'est fini. La matrice vit ici, dans la doc,
+pour qu'elle soit lue une fois par tout dev qui touche au code
+admin — plutôt que redécouverte dans chaque fichier de route.

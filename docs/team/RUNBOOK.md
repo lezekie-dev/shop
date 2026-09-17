@@ -256,6 +256,141 @@ docker exec shop-postgres psql -U shop -d shop -c "
 
 ---
 
+## 4bis. Migration échouée en prod (cf. ADR-0007)
+
+> Procédure ajoutée en Sprint 1 carte S1-014, sur la base d'ADR-0007.
+> Le healthcheck applicatif ne suffit pas (cf. ADR-0007 §2 — faux
+> positifs possibles). On triple la détection : init container,
+> healthcheck applicatif, cron quotidien.
+
+### Symptômes typiques
+
+- `/api/health` répond `503 { ok: false, drift: true }` ou
+  `{ db: "ok" mais drift: "constraint_missing" }`.
+- `docker logs shop-migrate` montre une erreur `prisma migrate
+  deploy` (code retour ≠ 0).
+- Le cron quotidien (`migrate-check.mjs`) envoie une alerte Telegram
+  « schema drift detected ».
+- L'app ne démarre pas du tout après un déploiement (le
+  `depends_on: { migrate: condition: service_completed_successfully }`
+  du compose bloque).
+
+### Première réponse (dans l'ordre)
+
+1. **Ne PAS paniquer-rollback tout de suite.** Identifier d'abord
+   **le niveau** du problème :
+
+   | Niveau         | Signal                                          | Action immédiate |
+   |----------------|-------------------------------------------------|------------------|
+   | **Code seul**  | Init container OK, app démarre, mais bug métier | Rollback `IMAGE_TAG` au SHA précédent via Coolify UI |
+   | **Migration réversible fautive** | Init container sort en erreur sur une migration **non destructive** | Rollback `IMAGE_TAG` + `prisma migrate resolve --rolled-back <name>` |
+   | **Migration destructive fautive** | Init container sort en erreur sur une migration destructive (DROP/ALTER dangereux) | Restaurer le backup DB (cf. §5) + rollback code |
+
+2. **Moins de 30 min après le déploiement** : on suppose que c'est
+   le nouveau code → `Coolify UI → Application → Rollback to
+   previous deployment`. Investiguer après coup.
+3. **Plus de 30 min après** : on suppose que des clients ont utilisé
+   la nouvelle version → rollback code **plus** investigation base.
+4. **Communication** (cf. RUNBOOK §1) : downtime > 5 min = message
+   dans WAR ROOM `t_b0886788`.
+
+### Diagnostic
+
+```bash
+# 1. Voir les logs de l'init container de migration
+docker logs shop-migrate --tail 200
+
+# 2. État de la table _prisma_migrations
+docker exec shop-postgres psql -U shop -d shop -c "
+  SELECT id, migration_name, finished_at, applied_steps_count
+  FROM _prisma_migrations
+  ORDER BY started_at DESC
+  LIMIT 10;
+"
+
+# 3. Migration pending (started_at non null mais finished_at null)
+docker exec shop-postgres psql -U shop -d shop -c "
+  SELECT * FROM _prisma_migrations WHERE finished_at IS NULL;
+"
+
+# 4. Lancer le check de drift à la main (le script de prod)
+docker exec shop-app node scripts/migrate-check.mjs
+# → code 0 = sain, code != 0 = drift détecté, lire stderr
+
+# 5. Voir les contraintes CHECK sur Stock (si CHECK manquante → migration initiale incomplète)
+docker exec shop-postgres psql -U shop -d shop -c "
+  SELECT conname, pg_get_constraintdef(oid)
+  FROM pg_constraint
+  WHERE conrelid = '\"Stock\"'::regclass;
+"
+```
+
+### Décisions par type d'incident
+
+#### a. Migration pending
+
+`finished_at IS NULL` sur une ligne → la migration a planté au
+milieu. Ne **jamais** supprimer la ligne manuellement (risque de
+laisser la base dans un état partiel non documenté). Procédure :
+
+```bash
+# Marquer la migration comme rolled-back (autorise prisma à réessayer)
+docker exec shop-app npx prisma migrate resolve --rolled-back <migration_name>
+# Puis re-déclencher la migration
+docker exec shop-app npx prisma migrate deploy
+```
+
+Si la migration est idempotente (ajout de colonne, contrainte
+conditionnelle), le replay passe. Si elle ne l'est pas (ALTER
+destructif), passer en niveau « destructive fautive » ci-dessus.
+
+#### b. Drift schéma
+
+Le check de drift a détecté un objet en base non présent dans
+`schema.prisma` (ou inversement). Causes possibles :
+
+- Manip SQL manuelle hors Prisma → ajouter l'objet au schema,
+  `prisma migrate dev` pour générer une migration de réconciliation.
+- Bug d'une migration précédente qui a appliqué un objet
+  partiellement → cf. (a).
+
+#### c. Contrainte manquante (ex : `stock_nonneg`)
+
+La contrainte `CHECK (quantity >= 0 AND reserved >= 0)` est
+**non-négociable** (cf. CONVENTIONS §12). Si elle manque, c'est
+que la migration initiale a été bypassée ou altérée. Procédure :
+
+```bash
+# Ré-appliquer la contrainte à la main (idempotent grâce au IF NOT EXISTS wrapper)
+docker exec shop-app node scripts/ensure-stock-check.mjs
+# → faire un commit dédié + ouvrir un ticket post-mortem
+```
+
+### Rollback complet (niveau base)
+
+Si la migration a corrompu des données **et** qu'on a un backup
+sain antérieur :
+
+1. STOPPER l'app (`docker stop shop-app`).
+2. Restaurer le backup (cf. §5) → la base revient à l'état
+   pré-migration.
+3. **Décider** : rollback code seul (si la migration fautive est
+   réversible) ou rollback code + nouvelle migration de
+   réparation (si la migration fautive a déjà eu des effets
+   visibles en prod).
+4. Relancer l'app.
+
+### Communication
+
+Tout incident migration > 5 min déclenche :
+
+- Message dans WAR ROOM `t_b0886788` (cf. §1).
+- Post-mortem obligatoire (cf. §6) dans les 48 h.
+- Mise à jour d'ADR-0007 si la procédure a révélé un cas non
+  couvert (et c'est arrivé → la procédure est vivante).
+
+---
+
 ## 6. Post-mortem
 
 > **Obligatoire** après tout incident P1 ou rollback prod.

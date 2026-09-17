@@ -76,11 +76,58 @@ Modèle **B avec une étape de réservation** :
   du Sprint 3.**
 - **Race condition checkout double** : deux clients passent en
   checkout en même temps sur la dernière unité. La transaction
-  PostgreSQL + le `SELECT FOR UPDATE` (à ajouter dans la requête
-  Prisma `$queryRaw` ou via `prisma.$transaction` avec isolation
-  sérialisable) gère ça. **Vérifier en test d'intégration**.
+  PostgreSQL (`prisma.$transaction` en isolation `READ COMMITTED`)
+  + le **`SELECT … FOR UPDATE` explicite** sur la ligne `Stock`
+  (en `$queryRaw`) gère ça. Le verrou pessimiste ligne suffit ; on
+  n'a pas besoin de `SERIALIZABLE`. **Détails complets :
+  CONVENTIONS §12.** **Vérifier en test d'intégration**.
 - **Refund** (S3+) : on remet du stock `quantity += refundedQty`,
   pas `reserved` (le produit est sorti du stock, il y reste).
+
+### Règle générale : **les instantanés portés par la commande sont la source de vérité** (amendement S1-014 / audit D6)
+
+> Ajoutée en Sprint 1 carte S1-014. Cette règle existait déjà pour
+> les lignes (`productNameSnapshot`, `variantNameSnapshot` sur
+> `OrderItem`, DAT §2). On l'**étend** aux adresses et on
+> l'érige en principe général.
+
+**Pourquoi** : une FK vers `Address` ne suffit pas. `Address` vit
+dans le carnet du client, qui peut l'éditer après coup. Sans
+instantané, modifier un profil réécrit l'histoire — l'adresse
+d'expédition d'une commande de mars change en juin et la facture
+d'avril devient fausse. Pour les **adresses**, la valeur est
+légale (facture, douane CNPS, contestation client). Pour les
+**noms de produits/variantes**, c'est de l'archivage commercial
+(« le produit a été renommé en juillet, mais la commande de juin
+conserve l'intitulé de l'époque »).
+
+**Application dans le schéma** :
+
+| Champ                              | Type            | Rôle                                                                |
+|------------------------------------|-----------------|---------------------------------------------------------------------|
+| `OrderItem.productNameSnapshot`    | `String`        | Nom du produit au moment de la commande.                            |
+| `OrderItem.variantNameSnapshot`    | `String`        | Nom de la variante au moment de la commande.                        |
+| `OrderItem.unitPriceCents`         | `Int`           | Prix unitaire au moment de l'ajout au panier (anti-surpricing).     |
+| `Order.shippingAddressSnapshot`    | `Json` (requis) | Copie figée de l'adresse de livraison au checkout.                  |
+| `Order.billingAddressSnapshot`     | `Json?`         | Idem facturation ; `null` si `billingSameAsShipping = true`.        |
+| `Order.addressId` / `billingAddressId` | `String` / `String?` | FK vers le carnet d'adresses — sert au **pré-remplissage** uniquement. |
+
+**Règle** : toute donnée affichée ou imprimée sur une commande
+post-paiement (facture PDF, étiquette colis, export comptable) lit
+**le snapshot**, jamais la FK. Si les deux divergent (parce que
+le client a édité son carnet depuis), c'est le snapshot qui a
+raison — c'est celui qui existait au moment de la transaction.
+
+**Conséquence pour les exports comptables** : un client qui édite
+son adresse en mars pour une commande passée en janvier ne peut
+pas réécrire la facture de janvier. La facture reste
+juridiquement correcte.
+
+**Tests d'intégration obligatoires** :
+- Création d'`Order` puis édition de l'`Address` du carnet → la
+  commande affichée conserve l'ancienne adresse.
+- Création d'`Order` puis `delete` de l'`Address` (si autorisé en
+  S4+) → la commande reste consultable via ses snapshots.
 
 **Surface de code touchée**
 - `src/domain/stock.ts` (règles pures : `available(stock)`, `canReserve`)

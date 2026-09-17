@@ -115,6 +115,12 @@ un même `payment_intent.id`. C'est une **ceinture + bretelles** assumée.
 - `tests/integration/webhook.test.ts` : 2e appel identique = no-op
 - Cron de purge (S4)
 
+**Cohérence migration prod** : la table `WebhookEvent` est créée
+par la migration initiale (`prisma migrate deploy`). Si cette
+migration échoue en prod, cf. ADR-0007 et CONVENTIONS §12 (la
+procédure de rollback y distingue « code seul », « migration
+réversible fautive », « migration destructive fautive »).
+
 ## Alternatives écartées
 
 | Alternative | Pourquoi écartée |

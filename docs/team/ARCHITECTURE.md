@@ -71,7 +71,7 @@ shop/
 │   │   │   └── admin/...
 │   │   └── middleware.ts         # protection routes /admin/*
 │   ├── domain/                   # logique métier pure, aucune dépendance Next/Prisma
-│   │   ├── pricing.ts            # calcul totaux depuis centimes
+│   │   ├── pricing.ts            # calcul totaux depuis Money (minor units ISO 4217, cf. ADR-0003)
 │   │   ├── stock.ts              # règles disponibilité/décrément
 │   │   ├── order.ts              # transitions de statut
 │   │   └── payment/
@@ -96,7 +96,7 @@ shop/
 │   │   │   ├── cart-button.tsx
 │   │   │   ├── product-card.tsx
 │   │   │   ├── variant-picker.tsx
-│   │   │   └── money.tsx         # format centimes → affichage
+│   │   │   └── money.tsx         # format Money → affichage (cf. ADR-0003)
 │   │   └── styles/
 │   │       └── globals.css
 │   └── types/
@@ -165,7 +165,11 @@ model User {
   @@index([email])
 }
 
-enum Role { ADMIN }
+enum Role { ADMIN STAFF }
+// Autorisation par capacité (can:orders:read, can:orders:transition:shipped,
+// etc.), JAMAIS par role === 'ADMIN' en dur. Matrice dans
+// docs/team/CONVENTIONS.md §13. Ajouter un rôle = éditer la matrice,
+// pas chasser les `if (role === …)` à travers le code.
 
 model Session {
   id        String   @id @default(cuid())
@@ -206,7 +210,8 @@ model Address {
   country    String   @default("FR")
   isDefault  Boolean  @default(false)
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  orders     Order[]
+  orders     Order[]                        // usage comme address de livraison
+  billingOrders Order[] @relation("BillingAddress") // usage comme address de facturation
   @@index([customerId])
 }
 
@@ -241,7 +246,7 @@ model Variant {
   productId    String
   sku          String        @unique
   name         String        // ex: "Rouge / M"
-  priceCents   Int           // prix de base, en centimes
+  priceCents   Int           // prix de base, en minor units de la devise (cf. ADR-0003 — dette de naming)
   attributes   Json          // { color: "red", size: "M" }
   weightGrams  Int?
   active       Boolean       @default(true)
@@ -306,7 +311,11 @@ model Order {
   id              String      @id @default(cuid())
   number          String      @unique        // ex: "ORD-2026-000123"
   customerId      String
-  addressId       String
+  addressId       String                       // FK vers Address (carnet client)
+  billingAddressId String?                     // FK optionnelle vers Address (cf. C2 PO-BRIEF)
+  billingSameAsShipping Boolean  @default(true)
+  shippingAddressSnapshot Json                 // ← valeur légale : copie figée au moment de la commande
+  billingAddressSnapshot  Json?                // idem, null si billingSameAsShipping = true
   status          OrderStatus @default(PENDING_PAYMENT)
   subtotalCents   Int
   shippingCents   Int
@@ -320,6 +329,7 @@ model Order {
   cancelledAt     DateTime?
   customer        Customer    @relation(fields: [customerId], references: [id])
   address         Address     @relation(fields: [addressId], references: [id])
+  billingAddress  Address?    @relation("BillingAddress", fields: [billingAddressId], references: [id])
   items           OrderItem[]
   payments        Payment[]
   shipments       Shipment[]
@@ -410,7 +420,11 @@ model AuditLog {
 
 **Décisions encodées dans le schéma** :
 
-- **Prix en `Int` centimes** : aucun `Float` dans le modèle. La devise vit dans `Currency` strings ISO-4217.
+- **Prix en `Int` minor units ISO 4217** (cf. ADR-0003 amendée) :
+  aucun `Float` dans le modèle. La devise vit dans `Currency`
+  strings ISO-4217 ; les colonnes `priceCents` / `amountCents` /
+  `unitPriceCents` / `subtotalCents` etc. sont des **minor units** de
+  cette devise (dette de naming documentée).
 - **Stock décrémenté à la confirmation** : `Stock.reserved` monte au checkout (`PENDING_PAYMENT`), descend + `Stock.quantity` descend au webhook `payment_intent.succeeded`. La décrément finale est transactionnelle (`prisma.$transaction`).
 - **Idempotence webhooks** : `WebhookEvent @@unique([provider, eventKey])` + `Payment @@unique([provider, providerRef])`. Une seconde insertion échoue → on renvoie 200 à Stripe et on ne rejoue pas la logique.
 - **Snapshot prix/nom sur `OrderItem`** : même si le `Variant` est modifié/supprimé ensuite, la commande reste fidèle.
@@ -1074,17 +1088,17 @@ Format : contexte · décision · conséquence. Gardés dans `docs/decisions/000
 **Décision** : interface `PaymentProvider` (4 méthodes : `createIntent`, `capture`, `refund`, `verifyWebhook`) dans `src/domain/payment/`. Stripe implémenté ; Mobile Money stubbé. Sélection via env `PAYMENT_PROVIDER`.
 **Conséquence** : checkout, webhooks et refunds n'importent jamais `stripe` directement → bascule de provider = zéro changement dans `src/server/**`.
 
-### ADR-003 — Prix en centimes (Int) partout, devise en string ISO-4217
+### ADR-003 — Prix en minor units ISO 4217 (amendée audit D3)
 
-**Contexte** : les `Float` provoquent des erreurs d'arrondi cumulatives sur les totaux.
-**Décision** : tous les champs prix = `Int` centimes. Affichage = helper `<Money cents={...} currency="EUR" />` qui formate locale.
-**Conséquence** : impossibilité de `199.999999` ; formatage cohérent ; export comptable simplifié (entier).
+**Contexte** : les `Float` provoquent des erreurs d'arrondi cumulatives sur les totaux ; « centimes » est ambigu pour les devises à 0 décimale (XAF/JPY/KRW).
+**Décision** : tous les champs prix = `Int` **minor units** de la devise portée par la ligne. **Une seule fonction** de conversion existe (`src/domain/money.ts`, helpers `toMinorUnits` / `fromMinorUnits`) ; aucun `*100`/`/100` dans le code ; `Money.amountMinor` passé tel quel à Stripe.
+**Conséquence** : impossible d'avoir `199.999999` ; formatage cohérent multi-devise ; alignement ISO 4217 et Stripe-native by design. Voir ADR-0003 pour le tableau complet des devises MVP.
 
 ### ADR-004 — Stock décrémenté à la confirmation de paiement, pas au panier
 
 **Contexte** : décrémenter au panier = fausse rupture visible. Décrémenter au paiement = pas de stock réservé pour les abandons.
-**Décision** : `Stock.reserved` monte au passage en `PENDING_PAYMENT`, descend + `Stock.quantity` descend au webhook `payment_intent.succeeded`. Tout est fait dans une seule `prisma.$transaction` pour éviter les races.
-**Conséquence** : un panier peut promettre plus que le stock réel ; on prévient l'utilisateur au checkout si `available < requested` ; on annule la commande si le webhook n'arrive pas dans un délai raisonnable.
+**Décision** : `Stock.reserved` monte au passage en `PENDING_PAYMENT`, descend + `Stock.quantity` descend au webhook `payment_intent.succeeded`. Tout est fait dans une seule `prisma.$transaction` (isolation `READ COMMITTED`) **avec verrou explicite `SELECT … FOR UPDATE`** sur la ligne `Stock`, **plus** contrainte `CHECK (quantity >= 0 AND reserved >= 0)` posée en SQL brut (cf. CONVENTIONS §12).
+**Conséquence** : un panier peut promettre plus que le stock réel ; on prévient l'utilisateur au checkout si `available < requested` ; on annule la commande si le webhook n'arrive pas dans un délai raisonnable. **Règle snapshots étendue (amendement S1-014)** : les `OrderItem.productNameSnapshot` / `variantNameSnapshot` / `unitPriceCents` **et** les `Order.shippingAddressSnapshot` / `billingAddressSnapshot` sont la source de vérité pour toute donnée imprimée ou exportée (facture, étiquette, comptable). Les FK vers `Address` servent au pré-remplissage uniquement.
 
 ### ADR-005 — Webhooks Stripe idempotents via table `WebhookEvent`
 

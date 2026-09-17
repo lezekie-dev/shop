@@ -64,7 +64,9 @@ On implémente une **authentification maison minimale** :
 **Surface de code touchée**
 - `src/lib/auth.ts` (hash, cookie, verifySession).
 - `src/lib/api.ts` (helper `withApi`).
-- `src/middleware.ts`.
+- `src/middleware.ts` (matcher = `/admin/:path*` **uniquement**,
+  pas `/api/admin/*` — cf. CONVENTIONS §11 pour la raison
+  Edge runtime vs Node).
 - Routes `/api/admin/auth/login`, `/api/admin/auth/logout`.
 
 ## Alternatives écartées

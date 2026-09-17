@@ -36,9 +36,11 @@ docs/
 └── decisions/
     ├── 0001-auth-admin-cookie.md
     ├── 0002-payment-provider-interface.md
-    ├── 0003-prix-centimes.md
-    ├── 0004-stock-au-paiement.md
-    └── 0005-webhooks-idempotents.md
+    ├── 0003-prix-minor-units.md   ← amendée S1-014 (minor units ISO 4217)
+    ├── 0004-stock-au-paiement.md   ← amendée S1-014 (règle snapshots étendue)
+    ├── 0005-webhooks-idempotents.md
+    ├── 0006-deps-cartography.md    ← créée S1-014
+    └── 0007-migration-prod.md      ← créée S1-014
 
 src/
 ├── app/                     ← App Router (pages + API)

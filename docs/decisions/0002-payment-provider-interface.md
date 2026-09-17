@@ -39,6 +39,9 @@ export interface PaymentProvider {
 ```
 
 - **Stripe** : implémenté en S3 (`src/domain/payment/stripe.ts`).
+  Le montant passé à `PaymentIntent.amount` est
+  `Money.amountMinor` tel quel — aucune multiplication ni division
+  (cf. ADR-0003 amendée et `src/domain/money.ts`).
 - **Mobile Money** : placeholder throw `not implemented yet` en S1, à
   brancher via un agrégateur (NotchPay, Flutterwave, PayDunya) en S3.
 - **Mock** : `src/domain/payment/mock.ts` utilisé par les tests
