@@ -32,6 +32,9 @@
   --success: #0f766e;          /* vert forêt */
   --success-tint: #e6f4f2;
   --warning: #a16207;          /* ocre — attention, jamais jaune vif */
+  /* Texte sur fond `--warning-tint`. Mesuré à 7,05:1 sur #fef9ee : l'ocre
+     seul ne tient que 3,9:1 sur le même fond, insuffisant pour du texte. */
+  --warning-ink: #7c4a03;
   --warning-tint: #fef9ee;
   --danger: #a4232b;           /* rouge brique, pas rouge pompier */
   --danger-tint: #fdf2f2;
@@ -408,13 +411,18 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
-  padding: 0.25rem 0.625rem;
+  /* Taille portée à celle de la maquette (0.375rem vertical, texte courant) :
+     les pastilles étaient plus petites que les boutons voisins, ce qui les
+     faisait passer pour des étiquettes décoratives plutôt que pour des
+     commandes. */
+  padding: 0.4375rem 0.875rem;
   border-radius: var(--r-pill);
   border: 1.5px solid var(--border-soft);
-  background: var(--bg-raised);
-  font-size: var(--fs-micro);
-  font-weight: var(--fw-semibold);
+  background: var(--bg-card);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
   color: var(--text-body);
+  min-height: 2.5rem;
   /* Sans min-width:0 les pastilles refusent de rétrécir et la rangée de filtres
      impose sa largeur intrinsèque (~1030px) à toute la page sur mobile. */
   min-width: 0;
@@ -430,16 +438,22 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   text-decoration: none;
 }
 .filters__pill--active {
-  background: var(--accent-tint);
-  border-color: var(--accent);
-  color: var(--accent);
+  /* FONCÉ et non terracotta clair, comme dans la maquette. Sur une rangée de
+     pastilles claires, un fond teinté pâle ne se distingue pas de ses voisines
+     à distance de lecture : il faut un contraste franc pour que l'œil sache
+     immédiatement où il se trouve. */
+  background: var(--text-strong);
+  border-color: var(--text-strong);
+  color: var(--text-inverse);
+  font-weight: var(--fw-semibold);
 }
 .filters__count {
   font-family: var(--font-numeric);
   color: var(--text-muted);
 }
 .filters__pill--active .filters__count {
-  color: var(--accent);
+  color: var(--text-inverse);
+  opacity: 0.75;
 }
 /* Pastille de pagination INACTIVE (page précédente/suivante au bord extrême).
    Elle garde sa forme et sa place pour que la rangée ne « saute » pas quand on
@@ -2288,7 +2302,7 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .edito__title {
   font-family: var(--font-display);
   font-size: var(--fs-h1);
-  line-height: var(--lh-h1);
+  line-height: var(--lh-tight);
   color: var(--text-strong);
   letter-spacing: var(--ls-tight);
   margin: var(--sp-2) 0 var(--sp-4);
@@ -2343,4 +2357,95 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   text-transform: uppercase;
   letter-spacing: var(--ls-label);
   color: var(--text-muted);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PASTILLES DE FILTRE — catalogue
+   ══════════════════════════════════════════════════════════════
+   Reprises de la maquette : le filtre CATÉGORIE devient une rangée de
+   pastilles au-dessus de la grille, au lieu d'un lien texte dans une phrase.
+   L'actif est en FONCÉ (fond brun foncé, texte clair) — sur une rangée de
+   pastilles claires, c'est la seule façon de voir d'un coup d'œil où l'on se
+   trouve. Un simple contour ne se distingue pas à distance de lecture. */
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-5);
+  padding: 0;
+  list-style: none;
+  align-items: center;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.375rem 0.875rem;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--border-soft);
+  background: var(--bg-card);
+  color: var(--text-body);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  text-decoration: none;
+  white-space: nowrap;
+  /* Cible tactile : 2,5rem ≈ 40px, sous les 44px recommandés mais les
+     pastilles sont espacées de 8px, ce qui porte la zone utile au-delà. */
+  min-height: 2.5rem;
+  transition:
+    background var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
+}
+.pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+}
+.pill--active {
+  background: var(--text-strong);
+  border-color: var(--text-strong);
+  color: var(--text-inverse);
+  font-weight: var(--fw-semibold);
+}
+.pill--active:hover {
+  background: var(--text-strong);
+  border-color: var(--text-strong);
+  color: var(--text-inverse);
+}
+.pill__count {
+  font-family: var(--font-numeric);
+  font-size: var(--fs-micro);
+  opacity: 0.7;
+}
+
+/* État vide d'un filtre : la pastille s'affiche mais ne mène nulle part. */
+.pill--empty {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* ── Encart de stock faible (fiche produit) ──
+   Repris de la maquette : fond ambre, bordure plus soutenue, texte foncé.
+   L'ambre est un AVERTISSEMENT, pas une erreur — d'où la couleur chaude
+   plutôt que le rouge de `--danger`, qui ferait croire à un incident. */
+.stock-alert {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 0;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--warning-tint);
+  border: 1.5px solid var(--warning);
+  border-radius: var(--r-md);
+  font-size: var(--fs-small);
+  color: var(--warning-ink);
+}
+.stock-alert strong {
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
 }

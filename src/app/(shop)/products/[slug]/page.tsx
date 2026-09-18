@@ -149,6 +149,28 @@ export default async function ProductDetailPage({
             </p>
           )}
 
+          {/* ── Alerte de stock faible ──
+              Reprise de la maquette : un encart ambre « Plus que N pièces »,
+              placé AVANT le choix de variante. C'est le moment où le client
+              hésite ; le prévenir maintenant lui évite de remplir son panier
+              pour découvrir la rupture à l'étape suivante.
+              Le total est la SOMME des variantes : annoncer « plus que 2 » en
+              se basant sur une seule taille serait faux dès que les autres
+              tailles sont en stock. */}
+          {anyAvailable && (() => {
+            const total = variants.reduce((acc, v) => acc + v.available, 0);
+            if (total > 5) return null;
+            return (
+              <p className="stock-alert">
+                <strong>Dernières pièces</strong>
+                <span>
+                  Il reste {total} exemplaire{total > 1 ? "s" : ""} en stock, toutes tailles
+                  confondues.
+                </span>
+              </p>
+            );
+          })()}
+
           {variants.length === 0 ? (
             <div className="empty-state">
               <IconBox className="empty-state__icon" />
