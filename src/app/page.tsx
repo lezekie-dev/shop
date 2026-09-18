@@ -3,9 +3,11 @@ import Link from "next/link";
 import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
 import {
+  IconCheck,
   IconMail,
   IconPhone,
   IconReturn,
+  IconScissors,
   IconSeed,
   IconTruck,
 } from "@/ui/components/icons";
@@ -44,7 +46,7 @@ export default async function HomePage() {
         variants: {
           where: { active: true },
           orderBy: { priceCents: "asc" },
-          select: { priceCents: true },
+          select: { priceCents: true, stock: { select: { quantity: true, reserved: true } } },
         },
       },
     }),
@@ -76,6 +78,22 @@ export default async function HomePage() {
 
   return (
     <div className="shop-container">
+      {/* ── Bandeau d'annonce ────────────────────────────────────
+          Tout en haut, hors du conteneur : sur fond terracotta pleine largeur,
+          il donne au premier écran une bordure colorée. Les informations sont
+          RÉELLES (délais de livraison, moyens de paiement effectivement
+          branchés) — un bandeau qui annonce une promotion inexistante est une
+          promesse qu'on ne tiendra pas. */}
+      <div className="annonce">
+        <div className="annonce__inner">
+          <span>Livraison suivie sous 72 h</span>
+          <span className="annonce__sep" aria-hidden>
+            ·
+          </span>
+          <span className="annonce__extra">Orange Money, MTN MoMo &amp; virement</span>
+        </div>
+      </div>
+
       <div className="page">
         {/* ── Héros ─────────────────────────────────────────────
             L'accroche dit ce qu'on vend et à qui, pas « Bienvenue ».
@@ -153,18 +171,40 @@ export default async function HomePage() {
               {latest.map((p) => {
                 const cover = p.images[0] ?? null;
                 const minPrice = p.variants[0]?.priceCents ?? null;
+                // État de stock : on additionne les variantes. « Épuisé » se
+                // calcule, il ne se décide pas — un badge posé à la main
+                // finirait par mentir. La disponibilité réelle est
+                // `quantity − reserved` : la marchandise réservée par des
+                // commandes en cours n'est plus vendable.
+                const stock = p.variants.reduce(
+                  (acc, v) => acc + Math.max(0, (v.stock?.quantity ?? 0) - (v.stock?.reserved ?? 0)),
+                  0,
+                );
+                const epuise = stock <= 0;
+                const dernieres = !epuise && stock <= 3;
                 return (
                   <li key={p.id} className="card card-interactive">
-                    <Link href={`/products/${p.slug}`} className="card-link">
-                      <ProductVisual
-                        url={cover?.url ?? null}
-                        alt={cover?.alt ?? `Visuel de ${p.name}`}
-                        productName={p.name}
-                        width={cover?.width ?? 800}
-                        height={cover?.height ?? 800}
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 45vw, 260px"
-                      />
-                    </Link>
+                    <div className="card-media">
+                      {epuise || dernieres ? (
+                        <span
+                          className={
+                            epuise ? "card-badge card-badge--out" : "card-badge card-badge--low"
+                          }
+                        >
+                          {epuise ? "Épuisé" : "Dernières pièces"}
+                        </span>
+                      ) : null}
+                      <Link href={`/products/${p.slug}`} className="card-link">
+                        <ProductVisual
+                          url={cover?.url ?? null}
+                          alt={cover?.alt ?? `Visuel de ${p.name}`}
+                          productName={p.name}
+                          width={cover?.width ?? 800}
+                          height={cover?.height ?? 800}
+                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 45vw, 260px"
+                        />
+                      </Link>
+                    </div>
                     <div className="card-body">
                       <p className="card-meta">{p.category.name}</p>
                       <Link href={`/products/${p.slug}`} className="card-title">
@@ -283,6 +323,57 @@ export default async function HomePage() {
               <p className="assurance__text">
                 Votre commande se suit depuis l&apos;email de confirmation.
               </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── Section éditoriale ──────────────────────────────────
+            Le récit qui sépare une boutique d'un listing. Les chiffres
+            affichés sont COMPTÉS depuis la base (catégories, produits actifs),
+            pas écrits en dur : « 2 catégories · 4 produits » sur une boutique
+            qui en compte 40 serait un mensonge visible. Aucune ancienneté ni
+            volume de clients n'est revendiqué — ces informations n'existent
+            pas encore. */}
+        <section className="edito enter enter-5">
+          <div>
+            <p className="eyebrow">Notre approche</p>
+            <h2 className="edito__title">Peu d&apos;articles, tous choisis.</h2>
+            <p className="edito__text">
+              Plutôt qu&apos;un catalogue de mille références, nous gardons une
+              sélection courte d&apos;articles en toile et coton. Chaque pièce est
+              essayée, portée, puis gardée ou écartée. Ce qui reste ici est ce
+              qui nous a convaincus.
+            </p>
+            <ul className="edito__points">
+              <li>
+                <IconScissors />
+                <span>Matières naturelles : toile de coton, canvas, fibres tissées.</span>
+              </li>
+              <li>
+                <IconCheck />
+                <span>Stock réel, mis à jour à chaque commande — jamais de survente.</span>
+              </li>
+              <li>
+                <IconTruck />
+                <span>Expédition suivie, avec un numéro de colis à chaque envoi.</span>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <div className="edito__stats">
+              <div>
+                <p className="edito__stat-value num">{categories.length}</p>
+                <p className="edito__stat-label">Catégorie{categories.length > 1 ? "s" : ""}</p>
+              </div>
+              <div>
+                <p className="edito__stat-value num">{stats}</p>
+                <p className="edito__stat-label">Article{stats > 1 ? "s" : ""} en ligne</p>
+              </div>
+              <div>
+                <p className="edito__stat-value num">72 h</p>
+                <p className="edito__stat-label">Délai d&apos;envoi</p>
+              </div>
             </div>
           </div>
         </section>

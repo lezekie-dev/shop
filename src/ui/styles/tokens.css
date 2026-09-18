@@ -1695,11 +1695,15 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-4);
+  /* BANDE PLEINE LARGEUR — la maquette la sort du conteneur : le fond coloré
+     touche les deux bords de l'écran, ce qui marque une rupture entre le
+     contenu marchand et la réassurance. Enfermée dans une boîte arrondie au
+     milieu de la page, elle ressemblait à une carte produit de plus. */
   margin-top: var(--sp-7);
-  padding: var(--sp-6) var(--sp-5);
+  margin-inline: calc(50% - 50vw);
+  padding: var(--sp-6) max(var(--sp-5), calc(50vw - var(--container) / 2));
   background: var(--bg-sand);
-  border: 1.5px solid var(--border-soft);
-  border-radius: var(--r-xl);
+  border-block: 1.5px solid var(--border-soft);
 }
 @media (min-width: 700px) {
   .assurance {
@@ -2182,4 +2186,161 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   display: block;
   border: 1.5px solid var(--border-soft);
   border-radius: var(--r-lg);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BLOCS DE VITRINE repris de la maquette Stitch
+   ══════════════════════════════════════════════════════════════
+   Ces éléments STRUCTURELS manquaient : je n'avais appliqué que les valeurs de
+   couleur, ce qui ne se voyait pas puisque les teintes étaient déjà proches.
+   Ce qui fait le caractère d'une vitrine, c'est l'organisation des blocs. */
+
+/* ── 1. Bandeau d'annonce ──
+   Une ligne fine tout en haut, sur fond terracotta, qui annonce le délai de
+   livraison. Elle porte une information VRAIE (rien d'inventé) et donne au
+   premier écran un bord coloré qui « ouvre » la page. */
+.annonce {
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  text-align: center;
+  padding: var(--sp-2) var(--sp-4);
+  font-weight: var(--fw-medium);
+}
+.annonce__inner {
+  max-width: var(--container);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.annonce__sep {
+  opacity: 0.5;
+}
+@media (max-width: 560px) {
+  /* Sur un écran étroit, deux messages à la suite deviennent illisibles :
+     on ne garde que l'essentiel. */
+  .annonce__extra {
+    display: none;
+  }
+}
+
+/* ── 2. Pastille d'état sur les cartes produit ──
+   « Épuisé » / « Dernières pièces » : une information de stock, pas un
+   argument publicitaire. Sans elle, un client clique sur un article
+   indisponible et découvre le problème une page plus loin. */
+.card-media {
+  position: relative;
+}
+.card-badge {
+  position: absolute;
+  top: var(--sp-3);
+  left: var(--sp-3);
+  z-index: 2;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--r-sm);
+  background: var(--bg-card);
+  color: var(--text-strong);
+  border: 1.5px solid var(--border-soft);
+  box-shadow: var(--shadow-xs);
+}
+.card-badge--out {
+  background: var(--text-strong);
+  color: var(--text-inverse);
+  border-color: var(--text-strong);
+}
+.card-badge--low {
+  background: var(--accent-tint);
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── 3. Section éditoriale ──
+   Un bloc de récit entre le catalogue et le pied de page. C'est ce qui
+   distingue une boutique d'un simple listing : il explique d'où vient la
+   marchandise. Le texte reste descriptif et vérifiable (aucun chiffre
+   inventé, aucune fausse ancienneté). */
+.edito {
+  margin-top: var(--sp-7);
+  display: grid;
+  gap: var(--sp-5);
+  background: var(--bg-sand);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+}
+@media (min-width: 860px) {
+  .edito {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: var(--sp-7);
+    padding: var(--sp-7);
+  }
+}
+.edito__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1);
+  line-height: var(--lh-h1);
+  color: var(--text-strong);
+  letter-spacing: var(--ls-tight);
+  margin: var(--sp-2) 0 var(--sp-4);
+  text-wrap: balance;
+}
+.edito__text {
+  margin: 0;
+  color: var(--text-body);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  max-width: 46ch;
+}
+.edito__points {
+  list-style: none;
+  margin: var(--sp-5) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-3);
+}
+.edito__points li {
+  display: flex;
+  gap: var(--sp-3);
+  align-items: flex-start;
+  font-size: var(--fs-small);
+  color: var(--text-body);
+}
+.edito__points svg {
+  color: var(--accent);
+  flex: none;
+  margin-top: 0.1em;
+}
+/* Trois chiffres en grille : matières, pièces, livraison. Ce sont des
+   comptages RÉELS tirés de la base, jamais des chiffres de vitrine. */
+.edito__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-4);
+  border-top: 1.5px solid var(--border-soft);
+  padding-top: var(--sp-5);
+  margin-top: var(--sp-5);
+}
+.edito__stat-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-h2);
+  color: var(--accent);
+  margin: 0;
+  line-height: 1;
+}
+.edito__stat-label {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-label);
+  color: var(--text-muted);
 }

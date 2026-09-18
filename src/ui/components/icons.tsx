@@ -272,3 +272,30 @@ export function IconTasks(props: IconProps) {
     </svg>
   );
 }
+
+/**
+ * IconScissors — ciseaux d'atelier, pour la section éditoriale « confection ».
+ * Même facture que les autres icônes : trait 1.75, bouts arrondis, 24×24.
+ */
+export function IconScissors(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.75"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      width="20"
+      height="20"
+      aria-hidden="true"
+      focusable="false"
+      {...props}
+    >
+      <circle cx="6" cy="6" r="2.6" />
+      <circle cx="6" cy="18" r="2.6" />
+      <path d="M8.4 7.5 20 18" />
+      <path d="M8.4 16.5 20 6" />
+    </svg>
+  );
+}
