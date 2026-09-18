@@ -39,12 +39,14 @@ export function CartItemsClient({ items }: { items: CartItemForRow[] }) {
 
   if (items.length === 0) {
     return (
-      <p style={{ color: "#666", marginTop: "0.5rem" }}>Votre panier est vide.</p>
+      <p className="empty-state__text">
+        Aucun article dans votre panier pour le moment.
+      </p>
     );
   }
 
   return (
-    <ul style={{ listStyle: "none", padding: 0, margin: "1rem 0 0", display: "grid", gap: "0.5rem" }}>
+    <ul className="line-list">
       {items.map((it) => (
         <CartItemRow
           key={it.variantId}

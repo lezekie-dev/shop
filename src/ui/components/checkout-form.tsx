@@ -18,8 +18,10 @@ export type CheckoutItem = {
   quantity: number;
 };
 
+type ProviderName = "mock" | "mobile_money" | "bank_transfer" | "stripe";
+
 type ProviderOption = {
-  name: "mock" | "mobile_money" | "bank_transfer" | "stripe";
+  name: ProviderName;
   label: string;
   available: boolean;
   reason?: string;
@@ -28,27 +30,27 @@ type ProviderOption = {
 type Method = "mock" | "mobile_money" | "bank_transfer";
 type Operator = "ORANGE" | "MTN";
 
-const METHOD_HINTS: Record<Method, string> = {
+/**
+ * Description de chaque méthode — elle vient de l'UI, pas du serveur : le
+ * serveur dit ce qui est *utilisable*, pas comment l'expliquer au client.
+ */
+const PROVIDER_HINTS: Record<ProviderName, string> = {
   mock: "Mode test : aucun débit réel, la commande est validée immédiatement.",
   mobile_money:
-    "Vous recevrez une demande de paiement sur votre téléphone (Orange Money / MTN MoMo).",
+    "Une demande de paiement est envoyée sur votre téléphone (Orange Money / MTN MoMo), vous la validez avec votre code.",
   bank_transfer:
-    "Vous recevrez l'IBAN et la référence à indiquer. Validation à réception du virement.",
+    "Vous recevez l'IBAN et la référence à indiquer dans le libellé du virement. Validation à réception.",
+  stripe: "Paiement par carte bancaire.",
 };
 
-const inputStyle: React.CSSProperties = {
-  padding: "0.5rem",
-  border: "1px solid #ccc",
-  borderRadius: 6,
-  fontSize: "0.95rem",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "0.25rem",
-  fontSize: "0.9rem",
-  color: "#333",
-};
+/**
+ * Repli si GET /api/payments/providers est injoignable : le mode simulé est
+ * toujours disponible. On n'invente jamais la disponibilité des autres
+ * méthodes — c'est le serveur qui sait.
+ */
+const FALLBACK_PROVIDERS: ProviderOption[] = [
+  { name: "mock", label: "Paiement simulé (test)", available: true },
+];
 
 export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
   const router = useRouter();
@@ -62,27 +64,29 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
   const [method, setMethod] = useState<Method>("mock");
   const [operator, setOperator] = useState<Operator>("ORANGE");
   const [providers, setProviders] = useState<ProviderOption[] | null>(null);
+  const [attempted, setAttempted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Les méthodes réellement utilisables sur cette instance viennent du
-  // serveur (listAvailableProviders) : l'UI n'invente rien.
+  // serveur (listAvailableProviders) : l'UI n'invente rien. Les indisponibles
+  // sont affichées malgré tout, grisées, avec la raison renvoyée par le serveur.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         const res = await fetch("/api/payments/providers", { cache: "no-store" });
         const data = (await res.json()) as { providers?: ProviderOption[] };
-        if (!cancelled && data.providers) {
-          const usable = data.providers.filter((p) => p.available);
-          setProviders(usable);
-          if (usable.length > 0 && !usable.some((p) => p.name === "mock")) {
-            setMethod(usable[0]!.name as Method);
-          }
+        if (cancelled || !data.providers) return;
+        setProviders(data.providers);
+        const usable = data.providers.filter((p) => p.available && p.name !== "stripe");
+        if (usable.length > 0 && !usable.some((p) => p.name === "mock")) {
+          setMethod(usable[0]!.name as Method);
         }
       } catch {
         // Le serveur est la source de vérité : en cas d'échec réseau on garde
         // la méthode par défaut et la soumission remontera l'erreur réelle.
+        if (!cancelled) setProviders(FALLBACK_PROVIDERS);
       }
     })();
     return () => {
@@ -93,8 +97,9 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    setAttempted(true);
     if (!isAddressComplete(address)) {
-      setError("Adresse incomplète");
+      setError("Adresse incomplète : complétez les champs signalés ci-dessous.");
       return;
     }
     if (method === "mobile_money" && !phone) {
@@ -146,79 +151,92 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
     }
   }
 
-  const usableProviders = providers ?? [
-    { name: "mock" as const, label: "Paiement simulé (test)", available: true },
-  ];
+  const options = providers ?? [];
+  const loadingProviders = providers === null;
+
+  const addressInvalid = attempted && !isAddressComplete(address);
+  const phoneInvalid = attempted && method === "mobile_money" && phone.trim().length === 0;
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: "grid", gap: "1.5rem" }}>
-      <fieldset style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "1rem", background: "#fff" }}>
-        <legend style={{ padding: "0 0.5rem", fontWeight: 600 }}>Vos coordonnées</legend>
-        <div style={{ display: "grid", gap: "0.75rem" }}>
-          <label style={labelStyle}>
-            Email<span style={{ color: "#b00020" }}>*</span>
+    <form onSubmit={handleSubmit} className="card form">
+      <h2 className="card__title">Vos informations</h2>
+
+      <div className="form-grid">
+        <label className="form-field">
+          <span className="form-field__label">
+            Email <span className="form-field__req">*</span>
+          </span>
+          <input
+            type="email"
+            name="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={submitting}
+          />
+          <p className="form-field__hint">La confirmation de commande y sera envoyée.</p>
+        </label>
+
+        <div className="form-grid form-grid--split">
+          <label className="form-field">
+            <span className="form-field__label">
+              Prénom <span className="form-field__req">*</span>
+            </span>
             <input
-              type="email"
-              name="email"
+              name="firstName"
               required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
               disabled={submitting}
-              style={inputStyle}
             />
           </label>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-            <label style={labelStyle}>
-              Prénom<span style={{ color: "#b00020" }}>*</span>
-              <input
-                name="firstName"
-                required
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                disabled={submitting}
-                style={inputStyle}
-              />
-            </label>
-            <label style={labelStyle}>
-              Nom<span style={{ color: "#b00020" }}>*</span>
-              <input
-                name="lastName"
-                required
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                disabled={submitting}
-                style={inputStyle}
-              />
-            </label>
-          </div>
-          <label style={labelStyle}>
-            Téléphone{method === "mobile_money" && <span style={{ color: "#b00020" }}>*</span>}
+          <label className="form-field">
+            <span className="form-field__label">
+              Nom <span className="form-field__req">*</span>
+            </span>
             <input
-              type="tel"
-              name="phone"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              name="lastName"
+              required
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
               disabled={submitting}
-              required={method === "mobile_money"}
-              style={inputStyle}
             />
           </label>
         </div>
-      </fieldset>
 
-      <fieldset style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "1rem", background: "#fff" }}>
-        <legend style={{ padding: "0 0.5rem", fontWeight: 600 }}>Adresse de livraison</legend>
-        <AddressForm value={address} onChange={setAddress} disabled={submitting} />
-      </fieldset>
+        <label className={phoneInvalid ? "form-field form-field--invalid" : "form-field"}>
+          <span className="form-field__label">
+            Téléphone{" "}
+            {method === "mobile_money" && <span className="form-field__req">*</span>}
+          </span>
+          <input
+            type="tel"
+            name="phone"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            disabled={submitting}
+            required={method === "mobile_money"}
+          />
+          <p className="form-field__hint">
+            {method === "mobile_money"
+              ? "Requis : c'est le numéro qui recevra la demande de paiement."
+              : "Facultatif — utile pour vous joindre au sujet de la livraison."}
+          </p>
+          {phoneInvalid && (
+            <p className="form-field__error">Numéro de téléphone requis pour Mobile Money.</p>
+          )}
+        </label>
+      </div>
 
-      <label
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "0.5rem",
-          fontSize: "0.9rem",
-        }}
-      >
+      <h3 className="card__title">Adresse de livraison</h3>
+      <AddressForm
+        value={address}
+        onChange={setAddress}
+        disabled={submitting}
+        invalid={addressInvalid}
+      />
+
+      <label className="check">
         <input
           type="checkbox"
           checked={billingSame}
@@ -228,83 +246,81 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
         Adresse de facturation identique à l&apos;adresse de livraison
       </label>
 
-      <fieldset style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: "1rem", background: "#fff" }}>
-        <legend style={{ padding: "0 0.5rem", fontWeight: 600 }}>Paiement</legend>
-        <div style={{ display: "grid", gap: "0.6rem" }}>
-          {usableProviders.map((p) => {
-            const selectable = p.name !== "stripe";
+      <h3 className="card__title">Paiement</h3>
+
+      {loadingProviders ? (
+        <div className="pay-options" aria-busy="true" aria-live="polite">
+          <span className="skeleton skeleton-line" />
+          <span className="skeleton skeleton-line skeleton-line--short" />
+          <span className="skeleton skeleton-line" />
+          <span className="sr-only">Chargement des moyens de paiement…</span>
+        </div>
+      ) : (
+        <div className="pay-options">
+          {options.map((p) => {
+            const selectable = p.available;
+            const active = method === p.name;
+            const className = [
+              "pay-option",
+              active ? "pay-option--active" : "",
+              selectable ? "" : "pay-option--disabled",
+            ]
+              .filter(Boolean)
+              .join(" ");
             return (
-              <label
-                key={p.name}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "auto 1fr",
-                  gap: "0.6rem",
-                  alignItems: "start",
-                  padding: "0.5rem",
-                  border: method === p.name ? "1px solid #111" : "1px solid transparent",
-                  borderRadius: 6,
-                  cursor: selectable ? "pointer" : "not-allowed",
-                }}
-              >
+              <label key={p.name} className={className}>
                 <input
                   type="radio"
                   name="paymentMethod"
                   value={p.name}
-                  checked={method === p.name}
+                  checked={active}
                   onChange={() => setMethod(p.name as Method)}
                   disabled={submitting || !selectable}
                 />
                 <span>
-                  <strong style={{ display: "block" }}>{p.label}</strong>
-                  <span style={{ color: "#666", fontSize: "0.85rem" }}>
-                    {METHOD_HINTS[p.name as Method] ?? ""}
-                  </span>
+                  <span className="pay-option__name">{p.label}</span>
+                  <span className="pay-option__desc">{PROVIDER_HINTS[p.name]}</span>
+                  {!selectable && (
+                    <span className="pay-option__reason">
+                      Indisponible sur cette boutique : {p.reason ?? "méthode non configurée."}
+                    </span>
+                  )}
                 </span>
               </label>
             );
           })}
-
-          {method === "mobile_money" && (
-            <label style={labelStyle}>
-              Opérateur
-              <select
-                name="operator"
-                value={operator}
-                onChange={(e) => setOperator(e.target.value as Operator)}
-                disabled={submitting}
-                style={inputStyle}
-              >
-                <option value="ORANGE">Orange Money</option>
-                <option value="MTN">MTN Mobile Money</option>
-              </select>
-            </label>
-          )}
         </div>
-      </fieldset>
+      )}
+
+      {method === "mobile_money" && (
+        <label className="form-field form-field--narrow">
+          <span className="form-field__label">Opérateur</span>
+          <select
+            name="operator"
+            value={operator}
+            onChange={(e) => setOperator(e.target.value as Operator)}
+            disabled={submitting}
+          >
+            <option value="ORANGE">Orange Money</option>
+            <option value="MTN">MTN Mobile Money</option>
+          </select>
+        </label>
+      )}
 
       {error && (
-        <p role="alert" style={{ color: "#b00020", margin: 0 }}>
+        <p role="alert" className="form-feedback form-feedback--error">
           {error}
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        style={{
-          padding: "0.85rem 1.25rem",
-          background: submitting ? "#666" : "#111",
-          color: "#fff",
-          border: 0,
-          borderRadius: 6,
-          cursor: submitting ? "wait" : "pointer",
-          fontWeight: 600,
-          fontSize: "1rem",
-        }}
-      >
-        {submitting ? "Validation…" : "Payer et commander"}
-      </button>
+      <div className="form-actions">
+        <button type="submit" className="btn btn-primary" disabled={submitting}>
+          {submitting ? "Validation…" : "Payer et commander"}
+        </button>
+        <p className="note">
+          Les champs marqués <span className="form-field__req">*</span> sont obligatoires.
+        </p>
+      </div>
     </form>
   );
 }

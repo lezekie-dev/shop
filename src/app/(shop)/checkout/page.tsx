@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CART_COOKIE_NAME, readCart } from "@/server/cart";
 import { computeTotals } from "@/domain/cart";
+import { formatMoneyEur } from "@/domain/pricing";
 import { CheckoutForm, type CheckoutItem } from "@/ui/components/checkout-form";
 
 export const dynamic = "force-dynamic";
@@ -18,25 +19,29 @@ export default async function CheckoutPage() {
 
   if (items.length === 0) {
     return (
-      <section style={{ padding: "2rem 0" }}>
-        <h1>Validation de commande</h1>
-        <p style={{ color: "#666", marginTop: "0.5rem" }}>Votre panier est vide.</p>
-        <p style={{ marginTop: "1.5rem" }}>
-          <Link
-            href="/products"
-            style={{
-              display: "inline-block",
-              padding: "0.6rem 1rem",
-              background: "#111",
-              color: "#fff",
-              borderRadius: 6,
-              textDecoration: "none",
-            }}
-          >
-            Voir le catalogue
-          </Link>
-        </p>
-      </section>
+      <div className="page">
+        <div className="page__head enter enter-1">
+          <div>
+            <h1 className="page__title">Validation de commande</h1>
+          </div>
+        </div>
+
+        <div className="empty-state enter enter-2">
+          <span className="empty-state__emoji" aria-hidden>
+            🛒
+          </span>
+          <p className="empty-state__title">Votre panier est vide</p>
+          <p className="empty-state__text">
+            Il n&apos;y a rien à commander pour l&apos;instant. Ajoutez au moins un article depuis
+            le catalogue, puis revenez sur cette page pour saisir vos coordonnées.
+          </p>
+          <div className="empty-state__actions">
+            <Link href="/products" className="btn btn-primary">
+              Voir le catalogue
+            </Link>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -49,78 +54,60 @@ export default async function CheckoutPage() {
   }));
 
   return (
-    <section
-      style={{
-        padding: "1rem 0",
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) 320px",
-        gap: "1.5rem",
-        alignItems: "start",
-      }}
-    >
-      <div>
-        <h1 style={{ marginBottom: "1rem" }}>Validation de commande</h1>
-        <CheckoutForm />
+    <div className="page">
+      <div className="page__head enter enter-1">
+        <div>
+          <h1 className="page__title">Validation de commande</h1>
+          <p className="page__sub">
+            Vos coordonnées, votre adresse de livraison et votre moyen de paiement. Aucun compte
+            n&apos;est nécessaire.
+          </p>
+        </div>
       </div>
-      <aside
-        style={{
-          padding: "1rem",
-          border: "1px solid #e5e5e5",
-          borderRadius: 8,
-          background: "#fff",
-          position: "sticky",
-          top: "1rem",
-        }}
-      >
-        <h2 style={{ margin: 0, fontSize: "1rem" }}>Récapitulatif</h2>
-        <ul style={{ listStyle: "none", padding: 0, margin: "0.75rem 0", display: "grid", gap: "0.5rem" }}>
-          {checkoutItems.map((i) => (
-            <li
-              key={i.variantId}
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr auto",
-                gap: "0.5rem",
-                fontSize: "0.9rem",
-              }}
-            >
-              <span>
-                {i.productName} <span style={{ color: "#777" }}>× {i.quantity}</span>
-              </span>
-              <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                {((i.unitPriceCents * i.quantity) / 100).toFixed(2).replace(".", ",")} €
-              </span>
-            </li>
-          ))}
-        </ul>
-        <hr style={{ border: 0, borderTop: "1px solid #eee", margin: "0.5rem 0" }} />
-        <Row label="Sous-total" cents={totals.subtotalCents} />
-        <Row label="Livraison" cents={totals.shippingCents} />
-        <hr style={{ border: 0, borderTop: "1px solid #eee", margin: "0.5rem 0" }} />
-        <Row label="Total" cents={totals.totalCents} bold />
-        <p style={{ margin: "0.75rem 0 0", color: "#777", fontSize: "0.8rem" }}>
-          Paiement sécurisé (mock). Aucun débit réel.
-        </p>
-      </aside>
-    </section>
-  );
-}
 
-function Row({ label, cents, bold }: { label: string; cents: number; bold?: boolean }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "baseline",
-        fontSize: bold ? "1rem" : "0.9rem",
-        margin: "0.15rem 0",
-      }}
-    >
-      <span style={{ color: bold ? "#111" : "#666", fontWeight: bold ? 700 : 400 }}>{label}</span>
-      <span style={{ fontWeight: bold ? 700 : 500, fontVariantNumeric: "tabular-nums" }}>
-        {(cents / 100).toFixed(2).replace(".", ",")} €
-      </span>
+      <div className="split enter enter-2">
+        <div className="section">
+          <CheckoutForm />
+        </div>
+
+        <aside className="split__aside">
+          <div className="card">
+            <h2 className="card__title">Récapitulatif</h2>
+            <div className="summary">
+              {checkoutItems.map((i) => (
+                <div key={i.variantId} className="summary__row">
+                  <span className="summary__label">
+                    {i.productName} <span className="num">× {i.quantity}</span>
+                  </span>
+                  <span className="summary__value money">
+                    {formatMoneyEur(i.unitPriceCents * i.quantity)}
+                  </span>
+                </div>
+              ))}
+              <div className="summary__row">
+                <span className="summary__label">Sous-total</span>
+                <span className="summary__value money">
+                  {formatMoneyEur(totals.subtotalCents)}
+                </span>
+              </div>
+              <div className="summary__row">
+                <span className="summary__label">Livraison</span>
+                <span className="summary__value money">
+                  {formatMoneyEur(totals.shippingCents)}
+                </span>
+              </div>
+              <div className="summary__row summary__row--total">
+                <span className="summary__label">Total</span>
+                <span className="money">{formatMoneyEur(totals.totalCents)}</span>
+              </div>
+            </div>
+          </div>
+
+          <p className="note">
+            Paiement sécurisé (mode démonstration). Aucun débit réel n&apos;est effectué.
+          </p>
+        </aside>
+      </div>
     </div>
   );
 }

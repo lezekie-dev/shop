@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 
-import { Money } from "@/ui/components/money";
+import { formatMoneyEur } from "@/domain/pricing";
 
 export type CartItemRowProps = {
   variantId: string;
@@ -12,13 +12,18 @@ export type CartItemRowProps = {
   productSlug: string;
   unitPriceCents: number;
   quantity: number;
+  /** Stock réellement disponible (quantité − réservations) au chargement. */
+  available: number;
   onUpdate: (variantId: string, quantity: number) => Promise<void>;
   onRemove: (variantId: string) => Promise<void>;
 };
 
 /**
  * Ligne d'article dans le panier. Client component : + / − qty, suppression.
- * L'image est un placeholder gris (S2) — S3 branchera ProductImage.
+ *
+ * Le stock disponible est affiché en clair : si la quantité demandée dépasse le
+ * stock, la ligne est signalée (badge + explication) et le bouton « + » est
+ * désactivé — le serveur refuserait de toute façon la mise à jour.
  */
 export function CartItemRow(props: CartItemRowProps) {
   const [qty, setQty] = useState(props.quantity);
@@ -26,6 +31,8 @@ export function CartItemRow(props: CartItemRowProps) {
   const [pending, startTransition] = useTransition();
 
   const lineTotal = qty * props.unitPriceCents;
+  const shortOnStock = props.available < qty;
+  const atMaxStock = qty >= props.available;
 
   function commitQty(next: number) {
     setError(null);
@@ -55,114 +62,76 @@ export function CartItemRow(props: CartItemRowProps) {
   }
 
   return (
-    <li
-      style={{
-        display: "grid",
-        gridTemplateColumns: "72px 1fr auto",
-        gap: "0.75rem",
-        alignItems: "center",
-        padding: "0.75rem",
-        border: "1px solid #e5e5e5",
-        borderRadius: 8,
-        background: "#fff",
-      }}
-    >
-      <div
-        aria-hidden
-        style={{
-          width: 72,
-          height: 72,
-          background: "#f0f0f0",
-          borderRadius: 6,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          color: "#bbb",
-          fontSize: "0.75rem",
-        }}
-      >
-        image
+    <li className={shortOnStock ? "card line line--unavailable" : "card line"}>
+      <div className="line__media" aria-hidden>
+        📦
       </div>
-      <div style={{ minWidth: 0 }}>
-        <Link
-          href={`/products/${props.productSlug}`}
-          style={{ color: "#111", textDecoration: "none", fontWeight: 600 }}
-        >
+
+      <div className="line__body">
+        <Link href={`/products/${props.productSlug}`} className="line__article">
           {props.productName}
         </Link>
-        <p style={{ margin: "0.125rem 0 0", color: "#666", fontSize: "0.85rem" }}>
-          {props.variantName}
+        <p className="line__meta">{props.variantName}</p>
+        <p className="line__meta">
+          Prix unitaire :{" "}
+          <span className="money">{formatMoneyEur(props.unitPriceCents)}</span>
         </p>
-        <p style={{ margin: "0.25rem 0 0", fontSize: "0.9rem" }}>
-          <Money cents={props.unitPriceCents} />
-        </p>
+
+        {shortOnStock && (
+          <p className="line__meta">
+            <span className="badge badge-cancelled">Stock insuffisant</span>{" "}
+            {props.available > 0 ? (
+              <>
+                Il ne reste que <span className="num">{props.available}</span> exemplaire
+                {props.available > 1 ? "s" : ""} : réduisez la quantité ou supprimez la ligne.
+              </>
+            ) : (
+              <>Cette variante est en rupture de stock : supprimez la ligne pour continuer.</>
+            )}
+          </p>
+        )}
+
         {error && (
-          <p role="alert" style={{ margin: "0.25rem 0 0", color: "#b00020", fontSize: "0.8rem" }}>
+          <p role="alert" className="form-feedback form-feedback--error">
             {error}
           </p>
         )}
-      </div>
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-        <div
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            border: "1px solid #ccc",
-            borderRadius: 6,
-          }}
-        >
+
+        <div className="line__foot">
+          <div className="qty">
+            <button
+              type="button"
+              className="qty__btn"
+              aria-label="Diminuer la quantité"
+              disabled={pending || qty <= 1}
+              onClick={() => commitQty(qty - 1)}
+            >
+              −
+            </button>
+            <span className="qty__value">{qty}</span>
+            <button
+              type="button"
+              className="qty__btn"
+              aria-label="Augmenter la quantité"
+              disabled={pending || atMaxStock}
+              onClick={() => commitQty(qty + 1)}
+            >
+              +
+            </button>
+          </div>
+
+          <span className="line__total money">{formatMoneyEur(lineTotal)}</span>
+
           <button
             type="button"
-            aria-label="Diminuer la quantité"
-            disabled={pending || qty <= 1}
-            onClick={() => commitQty(qty - 1)}
-            style={{
-              padding: "0.25rem 0.5rem",
-              border: 0,
-              background: "transparent",
-              cursor: qty <= 1 ? "not-allowed" : "pointer",
-              opacity: qty <= 1 ? 0.4 : 1,
-            }}
-          >
-            −
-          </button>
-          <span style={{ minWidth: 28, textAlign: "center", fontVariantNumeric: "tabular-nums" }}>
-            {qty}
-          </span>
-          <button
-            type="button"
-            aria-label="Augmenter la quantité"
+            className="btn btn-secondary"
+            aria-label="Supprimer l'article"
             disabled={pending}
-            onClick={() => commitQty(qty + 1)}
-            style={{
-              padding: "0.25rem 0.5rem",
-              border: 0,
-              background: "transparent",
-              cursor: "pointer",
-            }}
+            onClick={handleRemove}
           >
-            +
+            Supprimer
           </button>
         </div>
-        <div style={{ minWidth: 80, textAlign: "right", fontWeight: 600 }}>
-          <Money cents={lineTotal} />
-        </div>
-        <button
-          type="button"
-          aria-label="Supprimer l'article"
-          disabled={pending}
-          onClick={handleRemove}
-          style={{
-            padding: "0.25rem 0.5rem",
-            background: "transparent",
-            border: "1px solid #ccc",
-            borderRadius: 6,
-            cursor: "pointer",
-            fontSize: "0.85rem",
-          }}
-        >
-          ✕
-        </button>
       </div>
     </li>
   );

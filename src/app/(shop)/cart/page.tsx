@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { CART_COOKIE_NAME, readCart } from "@/server/cart";
 import { computeTotals } from "@/domain/cart";
+import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
 import { CartItemsClient } from "@/ui/components/cart-items-client";
 
@@ -17,45 +18,51 @@ export default async function CartPage() {
   const totals = computeTotals(cart?.items ?? [], SHIPPING_CENTS);
   const hasItems = (cart?.items.length ?? 0) > 0;
 
-  // Précharge les Variants/Products pour les rows
+  if (!hasItems) {
+    return (
+      <div className="page">
+        <div className="page__head enter enter-1">
+          <div>
+            <h1 className="page__title">Votre panier</h1>
+          </div>
+        </div>
+
+        <div className="empty-state enter enter-2">
+          <span className="empty-state__emoji" aria-hidden>
+            🛒
+          </span>
+          <p className="empty-state__title">Votre panier est vide</p>
+          <p className="empty-state__text">
+            Aucun article n&apos;a encore été ajouté. Parcourez le catalogue, choisissez une
+            variante puis cliquez sur « Ajouter au panier » : votre sélection apparaîtra ici.
+          </p>
+          <div className="empty-state__actions">
+            <Link href="/products" className="btn btn-primary">
+              Voir le catalogue
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Précharge les Variants/Products (et leur stock) pour les rows
   const variantIds = (cart?.items ?? []).map((i) => i.variantId);
   const variants =
     variantIds.length === 0
       ? []
       : await prisma.variant.findMany({
           where: { id: { in: variantIds } },
-          include: { product: { select: { name: true, slug: true } } },
+          include: { product: { select: { name: true, slug: true } }, stock: true },
         });
   const variantMap = new Map(variants.map((v) => [v.id, v]));
-
-  if (!hasItems) {
-    return (
-      <section style={{ padding: "2rem 0" }}>
-        <h1>Votre panier</h1>
-        <p style={{ color: "#666", marginTop: "0.5rem" }}>Votre panier est vide.</p>
-        <p style={{ marginTop: "1.5rem" }}>
-          <Link
-            href="/products"
-            style={{
-              display: "inline-block",
-              padding: "0.6rem 1rem",
-              background: "#111",
-              color: "#fff",
-              borderRadius: 6,
-              textDecoration: "none",
-            }}
-          >
-            Voir le catalogue
-          </Link>
-        </p>
-      </section>
-    );
-  }
 
   const itemsForClient = (cart?.items ?? [])
     .map((i) => {
       const v = variantMap.get(i.variantId);
       if (!v) return null;
+      const reserved = v.stock?.reserved ?? 0;
+      const quantity = v.stock?.quantity ?? 0;
       return {
         variantId: i.variantId,
         productName: v.product.name,
@@ -63,59 +70,58 @@ export default async function CartPage() {
         productSlug: v.product.slug,
         unitPriceCents: i.unitPriceCents,
         quantity: i.quantity,
+        available: Math.max(0, quantity - reserved),
       };
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
   return (
-    <section style={{ padding: "1rem 0" }}>
-      <h1>Votre panier</h1>
-      <CartItemsClient items={itemsForClient} />
-
-      <div
-        style={{
-          marginTop: "1.5rem",
-          padding: "1rem",
-          border: "1px solid #e5e5e5",
-          borderRadius: 8,
-          background: "#fff",
-          display: "grid",
-          gap: "0.5rem",
-        }}
-      >
-        <Row label="Sous-total" cents={totals.subtotalCents} />
-        <Row label="Livraison" cents={totals.shippingCents} />
-        <hr style={{ border: 0, borderTop: "1px solid #eee", margin: "0.25rem 0" }} />
-        <Row label="Total" cents={totals.totalCents} bold />
+    <div className="page">
+      <div className="page__head enter enter-1">
+        <div>
+          <h1 className="page__title">Votre panier</h1>
+          <p className="page__sub">
+            <span className="num">{itemsForClient.length}</span> article
+            {itemsForClient.length > 1 ? "s" : ""} — vous pouvez modifier les quantités avant de
+            commander.
+          </p>
+        </div>
       </div>
 
-      <p style={{ marginTop: "1.5rem" }}>
-        <Link
-          href="/checkout"
-          style={{
-            display: "inline-block",
-            padding: "0.75rem 1.25rem",
-            background: "#111",
-            color: "#fff",
-            borderRadius: 6,
-            textDecoration: "none",
-            fontWeight: 600,
-          }}
-        >
-          Passer commande
-        </Link>
-      </p>
-    </section>
-  );
-}
+      <div className="split enter enter-2">
+        <div className="section">
+          <CartItemsClient items={itemsForClient} />
+        </div>
 
-function Row({ label, cents, bold }: { label: string; cents: number; bold?: boolean }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-      <span style={{ color: bold ? "#111" : "#666", fontWeight: bold ? 700 : 400 }}>{label}</span>
-      <span style={{ fontWeight: bold ? 700 : 500, fontVariantNumeric: "tabular-nums" }}>
-        {(cents / 100).toFixed(2).replace(".", ",")} €
-      </span>
+        <aside className="split__aside">
+          <div className="card">
+            <h2 className="card__title">Récapitulatif</h2>
+            <div className="summary">
+              <div className="summary__row">
+                <span className="summary__label">Sous-total</span>
+                <span className="summary__value money">{formatMoneyEur(totals.subtotalCents)}</span>
+              </div>
+              <div className="summary__row">
+                <span className="summary__label">Livraison</span>
+                <span className="summary__value money">{formatMoneyEur(totals.shippingCents)}</span>
+              </div>
+              <div className="summary__row summary__row--total">
+                <span className="summary__label">Total</span>
+                <span className="money">{formatMoneyEur(totals.totalCents)}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="section">
+            <Link href="/checkout" className="btn btn-primary btn-block">
+              Passer commande
+            </Link>
+            <p className="note">
+              Livraison en France métropolitaine. Aucun compte n&apos;est nécessaire.
+            </p>
+          </div>
+        </aside>
+      </div>
     </div>
   );
 }

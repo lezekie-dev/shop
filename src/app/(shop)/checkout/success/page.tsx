@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
+import { StatusBadge } from "@/ui/components/status-badge";
 
 export const dynamic = "force-dynamic";
 
@@ -22,56 +24,35 @@ export default async function CheckoutSuccessPage({
   const orderNumber = order?.number ?? searchParams.n ?? "—";
 
   return (
-    <section
-      style={{
-        padding: "2rem 1rem",
-        textAlign: "center",
-        display: "grid",
-        gap: "1rem",
-        maxWidth: 520,
-        margin: "0 auto",
-      }}
-    >
-      <div aria-hidden style={{ fontSize: "2.5rem" }}>
+    <div className="confirm enter enter-1">
+      <span className="confirm__emoji" aria-hidden>
         ✓
+      </span>
+      <h1>Merci&nbsp;!</h1>
+      <p className="confirm__lead">
+        Votre paiement a bien été pris en compte. Vous recevrez un email de confirmation dès que la
+        boutique aura traité la commande.
+      </p>
+
+      <div className="card confirm__card">
+        <p className="eyebrow">Numéro de commande</p>
+        <strong className="num">{orderNumber}</strong>
+        {order && (
+          <>
+            <span className="money money--lg">{formatMoneyEur(order.totalCents)}</span>
+            <StatusBadge status={order.status} />
+          </>
+        )}
       </div>
-      <h1 style={{ margin: 0 }}>Merci pour votre commande&nbsp;!</h1>
-      <p style={{ color: "#666", margin: 0 }}>
-        Votre paiement a bien été pris en compte (mode test). Vous recevrez un email
-        de confirmation dès que possible.
-      </p>
-      <p
-        style={{
-          margin: "1rem 0 0",
-          padding: "0.75rem 1rem",
-          border: "1px solid #e5e5e5",
-          borderRadius: 8,
-          background: "#fff",
-        }}
-      >
-        Numéro de commande&nbsp;: <strong>{orderNumber}</strong>
-      </p>
-      <p>
-        <Link
-          href={`/orders/${orderId}`}
-          style={{
-            display: "inline-block",
-            padding: "0.75rem 1.25rem",
-            background: "#111",
-            color: "#fff",
-            borderRadius: 6,
-            textDecoration: "none",
-            fontWeight: 600,
-          }}
-        >
+
+      <div className="confirm__actions">
+        <Link href={`/orders/${orderId}`} className="btn btn-primary">
           Voir ma commande
         </Link>
-      </p>
-      <p>
-        <Link href="/products" style={{ color: "#666" }}>
+        <Link href="/products" className="btn btn-secondary">
           Continuer mes achats
         </Link>
-      </p>
-    </section>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import { useState, type ChangeEvent } from "react";
 
 export type AddressValue = {
   line1: string;
@@ -18,42 +18,38 @@ export const DEFAULT_ADDRESS: AddressValue = {
   country: "FR",
 };
 
-const inputStyle: React.CSSProperties = {
-  padding: "0.5rem",
-  border: "1px solid #ccc",
-  borderRadius: 6,
-  fontSize: "0.95rem",
-};
-
-const labelStyle: React.CSSProperties = {
-  display: "grid",
-  gap: "0.25rem",
-  fontSize: "0.9rem",
-  color: "#333",
-};
-
 /**
  * Formulaire d'adresse (livraison ou facturation). Controlled.
- * Le parent fournit la valeur + onChange.
+ * Le parent fournit la valeur + onChange, et signale `invalid` après une
+ * tentative d'envoi ratée : les champs concernés passent alors en état d'erreur
+ * visuel (bordure + fond `--danger-tint`), accompagnés d'un texte explicatif.
  */
 export function AddressForm({
   value,
   onChange,
   disabled,
+  invalid,
 }: {
   value: AddressValue;
   onChange: (next: AddressValue) => void;
   disabled?: boolean;
+  invalid?: boolean;
 }) {
   function handle<K extends keyof AddressValue>(key: K) {
     return (e: ChangeEvent<HTMLInputElement>) => {
       onChange({ ...value, [key]: e.target.value });
     };
   }
+
+  const fieldClass = (bad?: boolean) =>
+    `form-field${bad ? " form-field--invalid" : ""}`;
+
   return (
-    <div style={{ display: "grid", gap: "0.75rem" }}>
-      <label style={labelStyle}>
-        Adresse<span style={{ color: "#b00020" }}>*</span>
+    <div className="form-grid">
+      <label className={fieldClass(invalid && value.line1.trim().length === 0)}>
+        <span className="form-field__label">
+          Adresse <span className="form-field__req">*</span>
+        </span>
         <input
           name="line1"
           required
@@ -61,46 +57,62 @@ export function AddressForm({
           onChange={handle("line1")}
           disabled={disabled}
           placeholder="12 rue des Lilas"
-          style={inputStyle}
         />
+        {invalid && value.line1.trim().length === 0 && (
+          <p className="form-field__error">Indiquez le numéro et le nom de la rue.</p>
+        )}
       </label>
-      <label style={labelStyle}>
-        Complément
+
+      <label className="form-field">
+        <span className="form-field__label">Complément</span>
         <input
           name="line2"
           value={value.line2}
           onChange={handle("line2")}
           disabled={disabled}
           placeholder="Bâtiment, étage, digicode…"
-          style={inputStyle}
         />
+        <p className="form-field__hint">Facultatif : utile pour les livraisons en immeuble.</p>
       </label>
-      <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "0.75rem" }}>
-        <label style={labelStyle}>
-          Ville<span style={{ color: "#b00020" }}>*</span>
+
+      <div className="form-grid form-grid--city">
+        <label className={fieldClass(invalid && value.city.trim().length === 0)}>
+          <span className="form-field__label">
+            Ville <span className="form-field__req">*</span>
+          </span>
           <input
             name="city"
             required
             value={value.city}
             onChange={handle("city")}
             disabled={disabled}
-            style={inputStyle}
           />
+          {invalid && value.city.trim().length === 0 && (
+            <p className="form-field__error">Indiquez la ville de livraison.</p>
+          )}
         </label>
-        <label style={labelStyle}>
-          Code postal<span style={{ color: "#b00020" }}>*</span>
+
+        <label className={fieldClass(invalid && value.postalCode.trim().length === 0)}>
+          <span className="form-field__label">
+            Code postal <span className="form-field__req">*</span>
+          </span>
           <input
             name="postalCode"
             required
             value={value.postalCode}
             onChange={handle("postalCode")}
             disabled={disabled}
-            style={inputStyle}
           />
+          {invalid && value.postalCode.trim().length === 0 && (
+            <p className="form-field__error">Code postal requis.</p>
+          )}
         </label>
       </div>
-      <label style={labelStyle}>
-        Pays<span style={{ color: "#b00020" }}>*</span>
+
+      <label className={fieldClass(invalid && value.country.trim().length !== 2)}>
+        <span className="form-field__label">
+          Pays <span className="form-field__req">*</span>
+        </span>
         <input
           name="country"
           required
@@ -110,8 +122,11 @@ export function AddressForm({
           onChange={handle("country")}
           disabled={disabled}
           placeholder="FR"
-          style={inputStyle}
         />
+        <p className="form-field__hint">Code à deux lettres (FR, BE, CH…).</p>
+        {invalid && value.country.trim().length !== 2 && (
+          <p className="form-field__error">Le pays doit être un code à deux lettres.</p>
+        )}
       </label>
     </div>
   );
@@ -135,5 +150,6 @@ export function isAddressComplete(a: AddressValue): boolean {
 // Pour avoir une signature cohérente avec les forms server, expose un type
 export type AddressFormProps = {
   defaultValue?: AddressValue;
+  invalid?: boolean;
   onSubmit?: (a: AddressValue) => void;
 };
