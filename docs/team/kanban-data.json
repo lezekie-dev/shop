@@ -214,18 +214,18 @@
       "proof": "531/531 vitest, tsc 0, back-office 9/9 en prod"
     },
     {
-      "col": "backlog",
+      "col": "doing",
       "id": "E",
       "title": "Codes promo (1/commande, pas de cumul)",
-      "team": "lot 2B",
-      "proof": "cadré par le PO"
+      "team": "Backend + Frontend",
+      "proof": "domaine + API admin + saisie au checkout (cadré par le PO §3.3)"
     },
     {
-      "col": "backlog",
+      "col": "doing",
       "id": "F",
       "title": "Avis clients modérés (rattachés à une commande)",
-      "team": "lot 2B",
-      "proof": "cadré par le PO"
+      "team": "Backend + Frontend",
+      "proof": "dépôt d'avis rattaché à une commande + modération admin (PO §3.4)"
     },
     {
       "col": "backlog",
@@ -264,10 +264,10 @@
     },
     {
       "col": "backlog",
-      "id": "—",
-      "title": "Vague 2 — lots 2B (codes promo, avis) puis 2D (multi-devise)",
-      "team": "à lancer",
-      "proof": "cadrée par le PO dans PO-BRIEF-V2.md"
+      "id": "K",
+      "team": "lot 2D (sacrifiable)",
+      "title": "Multi-devise EUR/XAF",
+      "proof": "cadré par le PO — XAF arrimé à l'euro, aucune API"
     }
   ],
   "decisions": [

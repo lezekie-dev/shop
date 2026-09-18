@@ -39,6 +39,10 @@ export default async function OrderDetailPage({
           shipments: {
             select: { carrier: true, trackingNo: true, status: true, deliveredAt: true },
           },
+          // Code promo consommé : la confirmation affiche la remise AVEC son
+          // code (« Remise BIENVENUE −5,00 € »), pour que le client reconnaisse
+          // l'offre qu'il a utilisée (AC E3).
+          redemption: { include: { promoCode: { select: { code: true } } } },
         },
       })
     : null;
@@ -172,6 +176,22 @@ export default async function OrderDetailPage({
                   {formatMoneyEur(order.subtotalCents)}
                 </span>
               </div>
+              {order.discountCents > 0 ? (
+                <div className="summary__row">
+                  <span className="summary__label">
+                    Remise
+                    {order.redemption ? (
+                      <>
+                        {" "}
+                        <span className="num">{order.redemption.promoCode.code}</span>
+                      </>
+                    ) : null}
+                  </span>
+                  <span className="summary__value money">
+                    −{formatMoneyEur(order.discountCents)}
+                  </span>
+                </div>
+              ) : null}
               <div className="summary__row">
                 <span className="summary__label">Livraison</span>
                 <span className="summary__value money">

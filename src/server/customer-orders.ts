@@ -67,6 +67,12 @@ export type CustomerOrderDetail = {
   shippedAt: Date | null;
   subtotalCents: number;
   discountCents: number;
+  /**
+   * Code promo consommé par cette commande, `null` si aucun. Affiché à côté de
+   * la ligne de remise : le client doit pouvoir vérifier que c'est bien SON
+   * code qui a été appliqué, et se relire en cas de litige.
+   */
+  promoCode: string | null;
   shippingCents: number;
   totalCents: number;
   currency: string;
@@ -160,6 +166,9 @@ export async function getCustomerOrderDetail(
       // quand le client a facturé sur son adresse de livraison.
       address: true,
       billingAddress: true,
+      // Code promo consommé (chantier E) : sert à afficher la remise avec son
+      // code sur la commande. Relation 1–1 (`Order.redemption`).
+      redemption: { include: { promoCode: { select: { code: true } } } },
     },
   });
 
@@ -182,6 +191,7 @@ export async function getCustomerOrderDetail(
     shippedAt: order.shippedAt,
     subtotalCents: order.subtotalCents,
     discountCents: order.discountCents,
+    promoCode: order.redemption?.promoCode.code ?? null,
     shippingCents: order.shippingCents,
     totalCents: order.totalCents,
     currency: order.currency,

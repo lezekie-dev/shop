@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { formatMoneyEur } from "@/domain/pricing";
+import { isOrderStatusReviewable } from "@/domain/review";
 import { requireCustomer } from "@/lib/customer-auth";
 import { getCustomerOrderDetail } from "@/server/customer-orders";
 import { Money } from "@/ui/components/money";
@@ -181,6 +182,17 @@ export default async function AccountOrderDetailPage({
                 </li>
               ))}
             </ul>
+            {/* Point d'entrée du dépôt d'avis : la COMMANDE, jamais la fiche
+                produit (un avis est rattaché à une preuve d'achat — F2). Le lien
+                n'apparaît pas sur une commande annulée ou remboursée, qui ne
+                peut plus porter d'avis. */}
+            {isOrderStatusReviewable(order.status) ? (
+              <p className="line__meta">
+                <Link href={`/compte/commandes/${order.id}/avis`} className="btn btn-secondary">
+                  Laisser un avis sur cette commande
+                </Link>
+              </p>
+            ) : null}
           </div>
 
           <div className="card">
@@ -228,7 +240,15 @@ export default async function AccountOrderDetailPage({
               </div>
               {order.discountCents > 0 && (
                 <div className="summary__row">
-                  <span className="summary__label">Remise</span>
+                  <span className="summary__label">
+                    Remise
+                    {order.promoCode ? (
+                      <>
+                        {" "}
+                        <span className="num">{order.promoCode}</span>
+                      </>
+                    ) : null}
+                  </span>
                   <span className="summary__value money">
                     −{formatMoneyEur(order.discountCents)}
                   </span>

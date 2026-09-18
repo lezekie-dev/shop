@@ -49,21 +49,11 @@ tr:last-child td{border-bottom:0}
 <div class="board"><div class="col">
     <div class="col__head">
       <span class="col__label">Backlog</span>
-      <span class="col__count">7</span>
+      <span class="col__count">5</span>
     </div>
     <p class="col__hint">identifié, non planifié</p>
     
     <div class="card">
-    <div class="card__top"><span class="badge" style="background:#7c3aed">E</span>
-      <span class="team">lot 2B</span></div>
-    <p class="card__title">Codes promo (1/commande, pas de cumul)</p>
-    <p class="card__proof">cadré par le PO</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#be185d">F</span>
-      <span class="team">lot 2B</span></div>
-    <p class="card__title">Avis clients modérés (rattachés à une commande)</p>
-    <p class="card__proof">cadré par le PO</p>
-  </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#a16207">K</span>
       <span class="team">lot 2D</span></div>
     <p class="card__title">Multi-devise EUR/XAF (sacrifiable)</p>
@@ -84,19 +74,29 @@ tr:last-child td{border-bottom:0}
     <p class="card__title">Rate limiting sur le checkout</p>
     <p class="card__proof">repéré par le PO</p>
   </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#8a7264">—</span>
-      <span class="team">à lancer</span></div>
-    <p class="card__title">Vague 2 — lots 2B (codes promo, avis) puis 2D (multi-devise)</p>
-    <p class="card__proof">cadrée par le PO dans PO-BRIEF-V2.md</p>
+    <div class="card__top"><span class="badge" style="background:#a16207">K</span>
+      <span class="team">lot 2D (sacrifiable)</span></div>
+    <p class="card__title">Multi-devise EUR/XAF</p>
+    <p class="card__proof">cadré par le PO — XAF arrimé à l'euro, aucune API</p>
   </div>
   </div><div class="col">
     <div class="col__head">
       <span class="col__label">En cours</span>
-      <span class="col__count">0</span>
+      <span class="col__count">2</span>
     </div>
     <p class="col__hint">équipe au travail</p>
     <p class="col__wip">max 3 chantiers en parallèle</p>
-    
+    <div class="card">
+    <div class="card__top"><span class="badge" style="background:#7c3aed">E</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Codes promo (1/commande, pas de cumul)</p>
+    <p class="card__proof">domaine + API admin + saisie au checkout (cadré par le PO §3.3)</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#be185d">F</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Avis clients modérés (rattachés à une commande)</p>
+    <p class="card__proof">dépôt d'avis rattaché à une commande + modération admin (PO §3.4)</p>
+  </div>
   </div><div class="col">
     <div class="col__head">
       <span class="col__label">À vérifier</span>

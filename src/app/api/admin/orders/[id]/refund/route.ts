@@ -91,12 +91,14 @@ export async function POST(
         : { amountCents: requested, currency: payment.currency },
     );
 
-    // 2. Répercussion en base + stock.
+    // 2. Répercussion en base + stock. `actorId` sert à tracer la libération
+    //    de l'usage du code promo (décision D3) dans le journal d'audit.
     const result = await refundOrder(order.id, {
       amountCents: requested,
       providerRef: payment.providerRef,
       refundRef: refund.refundRef,
       reason,
+      actorId: admin.id,
     });
 
     await prisma.auditLog.create({
@@ -127,6 +129,7 @@ export async function POST(
       providerStatus: refund.status,
       amountCents: requested,
       stockRestored: result.stockRestored,
+      promoReleased: result.promoReleased,
       idempotent: result.idempotent,
     });
   } catch (err) {

@@ -147,6 +147,9 @@ export type AdminOrderDetail = {
   shippedAt: Date | null;
   cancelledAt: Date | null;
   subtotalCents: number;
+  discountCents: number;
+  /** Code promo consommé (chantier E), `null` si aucun. */
+  promoCode: string | null;
   shippingCents: number;
   totalCents: number;
   currency: string;
@@ -254,6 +257,9 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
       items: { orderBy: { id: "asc" } },
       payments: { orderBy: { createdAt: "desc" } },
       shipments: { orderBy: { shippedAt: "desc" } },
+      // Remise du code promo (chantier E) : le support doit pouvoir expliquer
+      // au client d'où vient l'écart entre sous-total et total.
+      redemption: { include: { promoCode: { select: { code: true } } } },
     },
   });
 
@@ -268,6 +274,8 @@ export async function getAdminOrderDetail(id: string): Promise<AdminOrderDetail 
     shippedAt: order.shippedAt,
     cancelledAt: order.cancelledAt,
     subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    promoCode: order.redemption?.promoCode.code ?? null,
     shippingCents: order.shippingCents,
     totalCents: order.totalCents,
     currency: order.currency,

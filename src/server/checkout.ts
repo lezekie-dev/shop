@@ -17,17 +17,20 @@
  *                      PENDING_PAYMENT, confirmée par l'admin (mark-paid).
  *
  * Invariants respectés :
- *  - Toutes les écritures sont transactionnelles (prisma.$transaction).
- *  - Le total est TOUJOURS recalculé serveur (jamais trusting client).
+ *  - Toutes les écritures sont transactionnelles
+ *    (`withSerializableRetry`, isolation `Serializable` — CONVENTIONS §12).
+ *  - Le total est TOUJOURS recalculé serveur (jamais trusting client), remise
+ *    comprise : le client propose un CODE, la remise est calculée ici.
  *  - Les prix et noms sont snapshotés dans OrderItem au moment de la création.
  */
 
 import type { Prisma } from "@prisma/client";
 
-import { prisma } from "@/lib/db";
+import { withSerializableRetry } from "@/lib/serializable-tx";
 import { generateOrderNumber } from "@/domain/order";
 import { generateOrderAccessToken } from "@/lib/order-token";
 import { applyPaymentOutcome } from "@/server/payments";
+import { evaluatePromoCode, recordPromoRedemption } from "@/server/promo";
 
 /** Méthodes de paiement acceptées par le checkout. */
 export type CheckoutPaymentMethod = "mock" | "mobile_money" | "bank_transfer";
@@ -100,8 +103,26 @@ export type CreateOrderResult = {
    * interne de back-office.
    */
   accessToken: string;
+  /** Sous-total des articles AVANT remise (recopié du Cart, jamais du client). */
+  subtotalCents: number;
+  /** Remise réellement appliquée, bornée au sous-total. */
+  discountCents: number;
   totalCents: number;
   currency: string;
+  /**
+   * Code promo effectivement consommé (forme normalisée), `null` si aucun.
+   * C'est ce que la confirmation affiche à côté de la ligne de remise : le
+   * client doit pouvoir vérifier que c'est bien SON code qui a été appliqué.
+   */
+  promoCode: string | null;
+  /**
+   * Renseigné quand un code était saisi sur le panier mais ne s'applique plus
+   * au moment de la commande (expiré entre-temps, plafond atteint par un autre
+   * client…). La commande passe alors SANS remise : le PO refuse qu'une
+   * expiration se transforme en erreur bloquante (AC E2), mais le client a le
+   * droit de savoir pourquoi le total n'est pas celui qu'il a vu.
+   */
+  promoRefusal: { reason: string; message: string } | null;
   paymentRef: string;
   paymentProvider: string;
   /** Renseigné par les méthodes asynchrones (Mobile Money, virement). */
@@ -174,7 +195,14 @@ export async function createOrderFromCart(
 
   const year = new Date().getFullYear();
 
-  return prisma.$transaction(async (tx) => {
+  // TRANSACTION `Serializable` + RETRY BORNÉ (CONVENTIONS §12).
+  // POURQUOI CE NIVEAU D'ISOLATION ICI : depuis le chantier E, la transaction
+  // lit un compteur d'usages et écrit la ligne qui l'incrémente. En Read
+  // Committed, deux checkouts simultanés sur un code `maxRedemptions = 1`
+  // lisent tous les deux « 0 usage » et accordent chacun leur remise : la
+  // fuite de marge est invisible, elle ne casse aucun test séquentiel. Le
+  // retry rejoue la transaction perdante sur des données à jour.
+  return withSerializableRetry(async (tx) => {
     const cart = await tx.cart.findUnique({
       where: { id: cartId },
       include: {
@@ -260,8 +288,40 @@ export async function createOrderFromCart(
       0,
     );
     const shippingCents = input.shippingCents;
-    const totalCents = subtotalCents + shippingCents;
     const currency = input.currency || cart.currency || "EUR";
+
+    // 4 bis) CODE PROMO — décision prise ICI, dans la transaction.
+    //
+    // Le SEUL élément venu du client est `Cart.promoCode`, une chaîne. Aucun
+    // montant n'entre dans cette fonction : un body de checkout portant
+    // `discountCents: 99999` n'a tout simplement pas de champ où atterrir
+    // (le schéma de la route ne le connaît pas, et cette fonction ne le lit
+    // jamais). C'est le test de sécurité central de ce chantier : le client
+    // propose un CODE, le serveur calcule le MONTANT.
+    //
+    // Les compteurs de plafond sont relus DANS la transaction, pas avant : une
+    // validation faite « juste avant » serait périmée au moment de l'écriture.
+    const now = new Date();
+    const promo = cart.promoCode
+      ? await evaluatePromoCode({
+          rawCode: cart.promoCode,
+          subtotalCents,
+          // `Customer` vient d'être résolu (upsert par email) : c'est le seul
+          // moment où un plafond PAR CLIENT est évaluable pour un visiteur.
+          customerId: customer.id,
+          now,
+          db: tx,
+        })
+      : null;
+
+    // Remise bornée au sous-total : le total ne peut jamais devenir négatif.
+    const discountCents = promo?.evaluation.ok ? promo.evaluation.discountCents : 0;
+    const promoRefusal =
+      promo && !promo.evaluation.ok
+        ? { reason: promo.evaluation.reason, message: promo.evaluation.message }
+        : null;
+    // La livraison n'est jamais remisée (périmètre du PO) : elle s'ajoute nue.
+    const totalCents = subtotalCents - discountCents + shippingCents;
 
     // Nom affichable du client (passé au PSP), robuste aux champs null.
     const customerName = [customer.firstName, customer.lastName]
@@ -282,6 +342,10 @@ export async function createOrderFromCart(
         addressId: shippingAddr.id, // adresse de livraison = référence canonique
         status: "PENDING_PAYMENT",
         subtotalCents,
+        // La remise est FIGÉE sur la commande : c'est ce montant qui fait foi
+        // pour le remboursement, la comptabilité et le KPI K6, même si le code
+        // change ou est supprimé ensuite.
+        discountCents,
         shippingCents,
         totalCents,
         currency,
@@ -315,9 +379,29 @@ export async function createOrderFromCart(
     // est porté par OrderItem/customer dans une version ultérieure si besoin.
     void billingAddr;
 
+    // Consommation de l'usage du code — DANS la même transaction que la
+    // commande. `PromoRedemption.orderId` est unique : un rejeu du checkout ne
+    // peut donc pas débiter un second usage, même en cas de double soumission.
+    if (promo && promo.evaluation.ok && promo.rule) {
+      await recordPromoRedemption(tx, {
+        promoCodeId: promo.rule.id,
+        orderId: order.id,
+        customerId: customer.id,
+        amountCents: discountCents,
+      });
+    }
+
     await tx.cart.update({
       where: { id: cartId },
-      data: { status: "CONVERTED", updatedAt: new Date() },
+      data: {
+        status: "CONVERTED",
+        updatedAt: new Date(),
+        discountCents,
+        // Un code qui n'a pas pu s'appliquer est RETIRÉ du panier : le laisser
+        // en base ferait réapparaître une remise fantôme sur un panier converti
+        // et brouillerait la lecture d'un éventuel litige.
+        ...(promoRefusal ? { promoCode: null, discountCents: 0 } : {}),
+      },
     });
 
     // 7) Payment intent chez le PSP — providerRef sert d'id côté PSP.
@@ -353,8 +437,12 @@ export async function createOrderFromCart(
       orderId: order.id,
       orderNumber,
       accessToken: order.accessToken,
+      subtotalCents,
+      discountCents,
       totalCents,
       currency,
+      promoCode: promo?.evaluation.ok ? promo.evaluation.code : null,
+      promoRefusal,
       paymentRef: intent.providerRef,
       paymentProvider: input.paymentMethod,
       ...(intent.redirectUrl !== undefined ? { redirectUrl: intent.redirectUrl } : {}),

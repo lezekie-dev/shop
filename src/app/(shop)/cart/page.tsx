@@ -4,8 +4,10 @@ import Link from "next/link";
 import { CART_COOKIE_NAME, readCart } from "@/server/cart";
 import { computeTotals } from "@/domain/cart";
 import { formatMoneyEur } from "@/domain/pricing";
+import { previewCartPromo } from "@/server/promo";
 import { prisma } from "@/lib/db";
 import { CartItemsClient } from "@/ui/components/cart-items-client";
+import { PromoCodeField } from "@/ui/components/promo-code-field";
 import {
   IconCart,
 } from "@/ui/components/icons";
@@ -20,6 +22,20 @@ export default async function CartPage() {
   const cart = cartId ? await readCart(cartId) : null;
   const totals = computeTotals(cart?.items ?? [], SHIPPING_CENTS);
   const hasItems = (cart?.items.length ?? 0) > 0;
+
+  // La remise est RECALCULÉE à chaque rendu, à partir de `Cart.promoCode` et du
+  // sous-total courant. Elle n'est jamais relue depuis `Cart.discountCents` :
+  // cette colonne n'est qu'un confort d'affichage, et l'utiliser comme source
+  // de vérité ferait apparaître une remise périmée après un changement de
+  // quantité ou l'expiration du code (AC E2).
+  const promo = await previewCartPromo({
+    promoCode: cart?.promoCode ?? null,
+    subtotalCents: totals.subtotalCents,
+    customerId: cart?.customerId ?? null,
+  });
+  const discountCents = promo?.discountCents ?? 0;
+  const promoRefusal = promo && !promo.evaluation.ok ? promo.evaluation.message : null;
+  const totalCents = totals.subtotalCents - discountCents + totals.shippingCents;
 
   if (!hasItems) {
     return (
@@ -102,15 +118,30 @@ export default async function CartPage() {
                 <span className="summary__label">Sous-total</span>
                 <span className="summary__value money">{formatMoneyEur(totals.subtotalCents)}</span>
               </div>
+              {discountCents > 0 ? (
+                // Ligne DISTINCTE et négative : le client doit voir la remise
+                // sur son propre montant, pas seulement un total qui baisse.
+                <div className="summary__row">
+                  <span className="summary__label">
+                    Remise <span className="num">{promo?.evaluation.ok ? promo.evaluation.code : ""}</span>
+                  </span>
+                  <span className="summary__value money">−{formatMoneyEur(discountCents)}</span>
+                </div>
+              ) : null}
               <div className="summary__row">
                 <span className="summary__label">Livraison</span>
                 <span className="summary__value money">{formatMoneyEur(totals.shippingCents)}</span>
               </div>
               <div className="summary__row summary__row--total">
                 <span className="summary__label">Total</span>
-                <span className="money">{formatMoneyEur(totals.totalCents)}</span>
+                <span className="money">{formatMoneyEur(totalCents)}</span>
               </div>
             </div>
+
+            <PromoCodeField
+              appliedCode={cart?.promoCode ?? null}
+              refusalMessage={promoRefusal}
+            />
           </div>
 
           <div className="section">

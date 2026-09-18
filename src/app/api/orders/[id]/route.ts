@@ -41,6 +41,9 @@ export async function GET(
       customer: { select: { email: true, firstName: true, lastName: true, phone: true } },
       address: true,
       payments: { select: { status: true, provider: true, amountCents: true } },
+      // Remise du code promo (chantier E) : le client qui consulte sa commande
+      // par son jeton doit retrouver le même détail que sur l'écran de paiement.
+      redemption: { include: { promoCode: { select: { code: true } } } },
     },
   });
 
@@ -53,6 +56,8 @@ export async function GET(
     number: order.number,
     status: order.status,
     subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    promoCode: order.redemption?.promoCode.code ?? null,
     shippingCents: order.shippingCents,
     totalCents: order.totalCents,
     currency: order.currency,

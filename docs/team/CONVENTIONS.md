@@ -748,6 +748,10 @@ le code. La capacité, elle, se teste à un seul endroit (le
 | `settings:write`                    | ✅    | ❌    | Paramètres boutique, PSP, livraison. |
 | `audit-log:read`                    | ✅    | ❌    | Lecture des pistes d'audit. |
 | `jobs:read`                         | ✅    | ✅    | Journal des tâches planifiées (`/admin/taches`, lot J) : lecture seule, aucune donnée financière — un job en échec doit être visible par celui qui traite les commandes. |
+| `reviews:read`                      | ✅    | ✅    | File de modération des avis (`/admin/avis`, chantier F) : lecture seule. Le compteur de `PENDING` et l'ancienneté en jours sont ce que la page existe pour montrer (KPI K8). |
+| `reviews:moderate`                  | ✅    | ✅    | Approuver / rejeter un avis. Portée par les DEUX rôles : le PO décrit la modération comme un rituel à tenir par 1–3 personnes, et « 0 avis `PENDING` de plus de 7 jours » (K8) ne tient pas si un seul rôle peut vider la file. Contenu modéré = texte + nom affiché d'un client, aucune donnée financière ni catalogue. |
+| `promos:read`                       | ✅    | ❌    | Liste des codes promo (`/admin/promos`, chantier E) : chaque ligne porte le **coût cumulé des remises** (`PromoRedemption.amountCents`), qui est la donnée du KPI K6 et une donnée financière. |
+| `promos:write`                      | ✅    | ❌    | Créer / modifier / désactiver un code promo. Le PO fixe « création d'un code = capacité ADMIN » : un code dispense de la marge, au même titre qu'un remboursement (`orders:refund`). |
 
 ### Comment ça se branche côté code (S4)
 

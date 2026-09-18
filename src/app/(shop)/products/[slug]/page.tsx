@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { aggregateRatingJsonLd } from "@/domain/review";
 import { formatMoneyEur } from "@/domain/pricing";
+import { getProductRatingSummary, listPublishedReviews } from "@/server/reviews";
 import { AddToCartForm } from "@/ui/components/add-to-cart-form";
 import { ProductVisual } from "@/ui/components/product-visual";
+import { ReviewsSection } from "@/ui/components/product-reviews";
 import { prisma } from "@/lib/db";
 import {
   IconBox,
@@ -11,10 +14,19 @@ import {
 
 export const dynamic = "force-dynamic";
 
+/** Numéro de page d'avis (`?avis=2`), borné : une valeur absurde retombe sur 1. */
+function parseReviewPage(value: string | undefined): number {
+  const parsed = Number.parseInt(value ?? "1", 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
 export default async function ProductDetailPage({
   params,
+  searchParams,
 }: {
   params: { slug: string };
+  /** Pagination des avis, indépendante de la fiche (F1). */
+  searchParams?: { avis?: string };
 }) {
   const product = await prisma.product.findUnique({
     where: { slug: params.slug },
@@ -32,6 +44,21 @@ export default async function ProductDetailPage({
   if (!product || !product.active) {
     notFound();
   }
+
+  // ── Avis clients (chantier F, F1) ───────────────────────────────────
+  // Deux lectures, et deux seulement : la synthèse (note + nombre) et UNE page
+  // d'avis publiés. Le filtre `status: "APPROVED"` vit dans `src/server/reviews.ts`
+  // — rien n'est filtré « après coup » ici, donc un avis en attente ne peut pas
+  // se retrouver à l'écran par oubli d'un `if`.
+  //
+  // `summary === null` (aucun avis publié) ⇒ aucun bloc n'est rendu : ni note,
+  // ni compteur, ni étoiles vides. C'est la règle explicite du PO, et elle est
+  // portée par `ReviewsSection`, pas par un style.
+  const reviewSummary = await getProductRatingSummary(product.id);
+  const reviewsPage = reviewSummary
+    ? await listPublishedReviews(product.id, { page: parseReviewPage(searchParams?.avis) })
+    : null;
+  const ratingLd = aggregateRatingJsonLd(reviewSummary);
 
   const variants = product.variants.map((v) => {
     const reserved = v.stock?.reserved ?? 0;
@@ -152,6 +179,39 @@ export default async function ProductDetailPage({
           )}
         </div>
       </div>
+
+      {/* Avis clients : le bloc n'existe QUE s'il y a au moins un avis publié.
+          `reviewsPage` est non nul exactement quand `reviewSummary` l'est. */}
+      {reviewSummary && reviewsPage ? (
+        <div className="section enter enter-2" id="avis">
+          <ReviewsSection
+            productName={product.name}
+            summary={reviewSummary}
+            reviews={reviewsPage.reviews}
+            page={reviewsPage.page}
+            pageCount={reviewsPage.pageCount}
+            productHref={`/products/${product.slug}`}
+          />
+        </div>
+      ) : null}
+
+      {/* Balisage structuré UNIQUEMENT s'il y a des avis publiés (F1) : un
+          `AggregateRating` à zéro avis annonce à Google une note qui n'existe
+          pas, et une donnée indexée ne se retire pas. Le contenu ne contient
+          que des NOMBRES — aucun texte client n'entre dans ce bloc. */}
+      {ratingLd ? (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Product",
+              name: product.name,
+              aggregateRating: ratingLd,
+            }),
+          }}
+        />
+      ) : null}
     </div>
   );
 }

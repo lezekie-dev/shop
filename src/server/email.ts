@@ -103,6 +103,10 @@ export type OrderEmailData = {
   placedAt: Date;
   currency: string;
   subtotalCents: number;
+  /** Remise du code promo, 0 si aucun code (chantier E). */
+  discountCents: number;
+  /** Code promo appliqué, `null` si aucun — affiché à côté de la remise. */
+  promoCode: string | null;
   shippingCents: number;
   totalCents: number;
   paymentProvider: string;
@@ -120,6 +124,7 @@ export async function loadOrderEmailData(orderId: string): Promise<OrderEmailDat
       items: true,
       address: true,
       customer: { select: { email: true, firstName: true, lastName: true } },
+      redemption: { include: { promoCode: { select: { code: true } } } },
     },
   });
   if (!order) {
@@ -137,6 +142,8 @@ export async function loadOrderEmailData(orderId: string): Promise<OrderEmailDat
     placedAt: order.placedAt,
     currency: order.currency,
     subtotalCents: order.subtotalCents,
+    discountCents: order.discountCents,
+    promoCode: order.redemption?.promoCode.code ?? null,
     shippingCents: order.shippingCents,
     totalCents: order.totalCents,
     paymentProvider: order.paymentProvider,
@@ -195,8 +202,15 @@ function itemsBlock(data: OrderEmailData): string {
 }
 
 function totalsBlock(data: OrderEmailData): string {
+  // La remise n'apparaît QUE s'il y en a une : une ligne « Remise : 0,00 € »
+  // sur toute commande sans code ferait douter d'un bug de calcul.
   return [
     `Sous-total : ${formatAmount(data.subtotalCents, data.currency)}`,
+    ...(data.discountCents > 0
+      ? [
+          `Remise${data.promoCode ? ` (${data.promoCode})` : ""} : −${formatAmount(data.discountCents, data.currency)}`,
+        ]
+      : []),
     `Livraison  : ${formatAmount(data.shippingCents, data.currency)}`,
     `Total      : ${formatAmount(data.totalCents, data.currency)}`,
   ].join("\n");
@@ -240,6 +254,11 @@ export function renderOrderConfirmation(data: OrderEmailData): EmailMessage {
     `<tbody>${rows}</tbody>`,
     `</table>`,
     `<p>Sous-total : ${formatAmount(data.subtotalCents, data.currency)}<br>`,
+    ...(data.discountCents > 0
+      ? [
+          `Remise${data.promoCode ? ` (${data.promoCode})` : ""} : −${formatAmount(data.discountCents, data.currency)}<br>`,
+        ]
+      : []),
     `Livraison : ${formatAmount(data.shippingCents, data.currency)}<br>`,
     `<strong>Total : ${formatAmount(data.totalCents, data.currency)}</strong></p>`,
     `<p>Mode de paiement : ${paymentLabel(data.paymentProvider)}</p>`,

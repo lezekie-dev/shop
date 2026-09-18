@@ -41,6 +41,21 @@ const bodySchema = z.object({
 });
 
 /**
+ * ⚠ AUCUN MONTANT DANS CE SCHÉMA — ET C'EST UNE DÉCISION DE SÉCURITÉ.
+ *
+ * Il n'existe volontairement aucune clé `discountCents`, `totalCents` ni
+ * `promoCode` dans le corps accepté : zod écarte les clés inconnues, donc un
+ * client qui enverrait `{ "discountCents": 99999 }` obtient une commande au
+ * prix normal, sans erreur et sans effet. S'il en existait une, elle serait
+ * une entrée utilisateur menant au montant encaissé — exactement la faille
+ * que le PO interdit (risque R4 : « aucune remise ne vient jamais du client »).
+ *
+ * Le seul paramètre de remise est `Cart.promoCode`, saisi dans le panier : un
+ * CODE, jamais un montant. La remise est recalculée par `createOrderFromCart`
+ * à partir du sous-total lu en base.
+ */
+
+/**
  * POST /api/checkout — checkout invité, multi-méthodes de paiement.
  *
  * Flow commun :
@@ -164,7 +179,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         orderNumber: orderResult.orderNumber,
         // Le jeton permet au client de suivre sa commande sans compte.
         accessToken: orderResult.accessToken,
+        subtotalCents: orderResult.subtotalCents,
+        discountCents: orderResult.discountCents,
         totalCents: orderResult.totalCents,
+        promoCode: orderResult.promoCode,
+        promoRefusal: orderResult.promoRefusal,
         status: "PENDING_PAYMENT",
         paymentMethod: method,
         paymentRef: orderResult.paymentRef,
@@ -202,7 +221,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         orderId: orderResult.orderId,
         orderNumber: orderResult.orderNumber,
         accessToken: orderResult.accessToken,
+        subtotalCents: orderResult.subtotalCents,
+        discountCents: orderResult.discountCents,
         totalCents: orderResult.totalCents,
+        promoCode: orderResult.promoCode,
+        promoRefusal: orderResult.promoRefusal,
         status: cap.status === "succeeded" ? "PAID" : "PENDING_PAYMENT",
         paymentMethod: method,
         paymentRef: orderResult.paymentRef,

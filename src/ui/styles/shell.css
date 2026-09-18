@@ -360,3 +360,178 @@
   font-size: var(--fs-micro);
   color: var(--text-muted);
 }
+
+/* ============================================================
+   Avis clients (chantier F, lot 2B) — vitrine.
+   Ajouté en fin de fichier volontairement : la coquille publique est
+   partagée par d'autres chantiers en cours, et une section ajoutée à la
+   fin ne peut pas entrer en conflit avec une modification du haut.
+   100 % tokens : aucune valeur en dur (couleur, espace, taille).
+   ============================================================ */
+
+/* Mention « Achat vérifié » : un avis rattaché à une commande. Le badge
+   réutilise la forme commune (`.badge`) et ne fait que choisir sa teinte
+   « confiance » dans la palette existante. */
+.badge-verified {
+  background: var(--success-tint);
+  color: var(--success);
+  border-color: rgba(15, 118, 110, 0.2);
+}
+
+.reviews {
+  margin-top: var(--sp-6);
+}
+
+/* Synthèse : étoiles + note + nombre d'avis sur une même ligne qui passe à la
+   ligne sur mobile — jamais de note tronquée sur petit écran. */
+.reviews__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0 0 var(--sp-4);
+}
+
+.reviews__count {
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+
+.reviews__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.review {
+  border-top: 1px solid var(--border-soft);
+  padding-top: var(--sp-4);
+}
+
+.review:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.review__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+
+.review__author {
+  margin: 0;
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+
+.review__meta {
+  margin: 0;
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+}
+
+.review__title {
+  margin: var(--sp-2) 0 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  color: var(--text-strong);
+}
+
+.review__body {
+  margin: var(--sp-1) 0 0;
+  color: var(--text-body);
+  line-height: var(--lh-body);
+  /* Un avis est du texte saisi : on ne casse jamais la mise en page avec un
+     mot très long ou une suite de caractères sans espace. */
+  overflow-wrap: anywhere;
+}
+
+.review__body--admin {
+  font-size: var(--fs-small);
+  color: var(--text-body);
+  margin: var(--sp-1) 0;
+}
+
+.review-stars {
+  color: var(--accent);
+  letter-spacing: var(--ls-label);
+}
+
+.review-stars__glyphs {
+  white-space: nowrap;
+}
+
+.reviews__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-top: var(--sp-5);
+  flex-wrap: wrap;
+}
+
+/* ── Formulaire de dépôt (espace client) ─────────────────────────── */
+.review-form {
+  margin-top: var(--sp-3);
+}
+
+.review-form__rating {
+  border: none;
+  padding: 0;
+  margin: 0 0 var(--sp-3);
+}
+
+.review-form__stars {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+}
+
+/* Le champ radio pilote l'étoile affichée : l'input reste focusable (clavier,
+   lecteur d'écran) mais invisible, et le `:focus-visible` du label garde le
+   repère visuel — sinon on navigue à l'aveugle au clavier. */
+.review-form__star {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: var(--fs-h3);
+}
+
+.review-form__star input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.review-form__star input:checked + span {
+  color: var(--accent);
+}
+
+.review-form__star:has(input:checked) {
+  color: var(--accent);
+}
+
+.review-form__star input:focus-visible + span {
+  outline: 2px solid var(--accent-ring);
+  outline-offset: 2px;
+}
+
+.review-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 12rem;
+}
+
+.review-actions__reject {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}

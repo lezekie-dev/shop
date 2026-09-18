@@ -4,7 +4,9 @@ import Link from "next/link";
 import { CART_COOKIE_NAME, readCart } from "@/server/cart";
 import { computeTotals } from "@/domain/cart";
 import { formatMoneyEur } from "@/domain/pricing";
+import { previewCartPromo } from "@/server/promo";
 import { CheckoutForm, type CheckoutItem } from "@/ui/components/checkout-form";
+import { PromoCodeField } from "@/ui/components/promo-code-field";
 import {
   IconCart,
 } from "@/ui/components/icons";
@@ -19,6 +21,18 @@ export default async function CheckoutPage() {
   const cart = cartId ? await readCart(cartId) : null;
   const items = cart?.items ?? [];
   const totals = computeTotals(items, SHIPPING_CENTS);
+
+  // MÊME calcul que le panier (même fonction, même source : `Cart.promoCode`).
+  // L'écran de commande ne fait pas foi pour autant : le serveur recalcule la
+  // remise dans la transaction de création de commande.
+  const promo = await previewCartPromo({
+    promoCode: cart?.promoCode ?? null,
+    subtotalCents: totals.subtotalCents,
+    customerId: cart?.customerId ?? null,
+  });
+  const discountCents = promo?.discountCents ?? 0;
+  const promoRefusal = promo && !promo.evaluation.ok ? promo.evaluation.message : null;
+  const totalCents = totals.subtotalCents - discountCents + totals.shippingCents;
 
   if (items.length === 0) {
     return (
@@ -91,6 +105,14 @@ export default async function CheckoutPage() {
                   {formatMoneyEur(totals.subtotalCents)}
                 </span>
               </div>
+              {discountCents > 0 ? (
+                <div className="summary__row">
+                  <span className="summary__label">
+                    Remise <span className="num">{promo?.evaluation.ok ? promo.evaluation.code : ""}</span>
+                  </span>
+                  <span className="summary__value money">−{formatMoneyEur(discountCents)}</span>
+                </div>
+              ) : null}
               <div className="summary__row">
                 <span className="summary__label">Livraison</span>
                 <span className="summary__value money">
@@ -99,9 +121,14 @@ export default async function CheckoutPage() {
               </div>
               <div className="summary__row summary__row--total">
                 <span className="summary__label">Total</span>
-                <span className="money">{formatMoneyEur(totals.totalCents)}</span>
+                <span className="money">{formatMoneyEur(totalCents)}</span>
               </div>
             </div>
+
+            <PromoCodeField
+              appliedCode={cart?.promoCode ?? null}
+              refusalMessage={promoRefusal}
+            />
           </div>
 
           <p className="note">

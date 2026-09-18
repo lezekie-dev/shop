@@ -26,6 +26,7 @@ import { Prisma, type OrderStatus, type PaymentStatus } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import { sendOrderConfirmation } from "@/server/email";
+import { releasePromoRedemption } from "@/server/promo";
 
 export type PaymentOutcome = "succeeded" | "pending" | "failed";
 
@@ -303,6 +304,8 @@ export type RefundOrderResult = {
   idempotent: boolean;
   /** true = le stock des articles a été ré-incrémenté. */
   stockRestored: boolean;
+  /** true = l'usage de code promo consommé par cette commande a été libéré (D3). */
+  promoReleased: boolean;
 };
 
 /**
@@ -331,6 +334,10 @@ export async function refundOrder(
     providerRef: string | null;
     refundRef: string;
     reason: string | null;
+    /** Auteur du remboursement — sert à tracer la libération du code promo
+     * dans le journal d'audit. Absent pour un remboursement système : on
+     * n'écrit alors PAS de ligne d'audit anonyme, qui serait inexploitable. */
+    actorId?: string | undefined;
   },
 ): Promise<RefundOrderResult> {
   return prisma.$transaction(async (tx): Promise<RefundOrderResult> => {
@@ -361,6 +368,7 @@ export async function refundOrder(
         paymentStatus: payment.status,
         idempotent: true,
         stockRestored: false,
+        promoReleased: false,
       };
     }
 
@@ -401,12 +409,23 @@ export async function refundOrder(
       },
     });
 
+    // DÉCISION D3 : une vente remboursée LIBÈRE l'usage du code promo. La
+    // ligne est supprimée (les plafonds sont des comptes sur cette table) et
+    // la trace part dans le journal d'audit — sans quoi Fatou verrait « code
+    // déjà utilisé » pour une vente qu'elle n'a jamais encaissée.
+    const release = await releasePromoRedemption(tx, {
+      orderId,
+      actorId: input.actorId,
+      reason: "order_refunded",
+    });
+
     return {
       orderId,
       orderStatus: "REFUNDED" satisfies OrderStatus,
       paymentStatus: "REFUNDED" satisfies PaymentStatus,
       idempotent: false,
       stockRestored: true,
+      promoReleased: release.released,
     };
   });
 }

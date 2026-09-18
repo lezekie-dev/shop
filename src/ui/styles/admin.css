@@ -648,3 +648,68 @@
   white-space: nowrap;
   flex: none;
 }
+
+/* ============================================================
+   Avis clients — file de modération (chantier F, lot 2B).
+   Ajouté en fin de fichier : admin.css est partagé par d'autres chantiers,
+   une section en fin de fichier ne peut pas les gêner.
+   100 % tokens, aucune valeur en dur.
+   ============================================================ */
+
+.admin-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-4);
+}
+
+.admin-filter {
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--border-soft);
+  background: var(--bg-raised);
+  color: var(--text-body);
+  font-size: var(--fs-small);
+  text-decoration: none;
+}
+
+.admin-filter:hover {
+  border-color: var(--border-strong);
+}
+
+.admin-filter--active {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+
+/* Ancienneté d'un avis en attente : l'objectif « 0 avis PENDING de plus de
+   7 jours » (KPI K8) doit se lire sans calcul mental. */
+.review-age {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+.review-age__flag {
+  display: inline-block;
+  margin-left: var(--sp-1);
+  padding: 0.0625rem 0.375rem;
+  border-radius: var(--r-pill);
+  background: var(--danger-tint);
+  color: var(--danger);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-label);
+}
+
+.review-age--overdue {
+  color: var(--danger);
+  font-weight: var(--fw-semibold);
+}
+
+.review-counter--overdue {
+  color: var(--danger);
+  font-weight: var(--fw-semibold);
+}

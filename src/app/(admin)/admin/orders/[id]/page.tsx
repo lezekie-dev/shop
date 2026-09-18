@@ -162,6 +162,17 @@ export default async function AdminOrderDetailPage({
                 value={<Money cents={order.subtotalCents} currency={order.currency} />}
                 numeric
               />
+              {order.discountCents > 0 ? (
+                <Row
+                  label={`Remise${order.promoCode ? ` (${order.promoCode})` : ""}`}
+                  value={
+                    <>
+                      −<Money cents={order.discountCents} currency={order.currency} />
+                    </>
+                  }
+                  numeric
+                />
+              ) : null}
               <Row
                 label="Livraison"
                 value={<Money cents={order.shippingCents} currency={order.currency} />}

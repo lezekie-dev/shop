@@ -41,7 +41,19 @@ export type Capability =
   | "users:write"
   | "settings:write"
   | "audit-log:read"
-  | "jobs:read";
+  | "jobs:read"
+  // Avis clients modérés (chantier F, lot 2B). Deux capacités distinctes :
+  // consulter la file (lecture) n'est pas décider de ce qui sera publié. La
+  // matrice §13 des CONVENTIONS ne les listait pas — la décision est
+  // documentée ici et reportée dans §13.
+  | "reviews:read"
+  | "reviews:moderate"
+  // Codes promo (chantier E, lot 2B). Deux capacités distinctes : lister les
+  // codes expose ce qu'ils COÛTENT en remises cumulées, créer ou désactiver un
+  // code engage la marge. La matrice §13 ne les listait pas — la décision est
+  // documentée ici et reportée dans §13.
+  | "promos:read"
+  | "promos:write";
 
 /**
  * Matrice rôle → capacités (CONVENTIONS §13).
@@ -68,6 +80,19 @@ export type Capability =
  *     la page est en lecture seule et n'expose aucun secret (nom de tâche,
  *     statut, durée, message d'erreur). C'est une information d'exploitation,
  *     pas une donnée financière.
+ *   - `/admin/avis` + `PATCH /api/admin/reviews/[id]` (chantier F, avis
+ *     clients) → `reviews:read` et `reviews:moderate`, portées par les DEUX
+ *     rôles. Décision produit justifiée : le PO décrit la modération comme un
+ *     « rituel » tenu par 1–3 personnes, avec un KPI explicite (0 avis
+ *     `PENDING` de plus de 7 jours). Réserver la modération à ADMIN ferait
+ *     tomber ce KPI dès que l'administrateur est absent. Le contenu modéré se
+ *     limite au texte et au nom affiché du client : ni donnée financière, ni
+ *     donnée de catalogue.
+ *   - `/admin/promos` + `/api/admin/promos*` (chantier E, codes promo) →
+ *     `promos:read` et `promos:write`, réservées à ADMIN. Le PO fixe « création
+ *     d'un code = capacité ADMIN » : un code dispense de la marge, et la liste
+ *     affiche le coût cumulé des remises (KPI K6). STAFF ne le porte pas, au
+ *     même titre que `orders:refund` — même nature financière.
  */
 export const CAPABILITIES: Record<Role, readonly Capability[]> = {
   ADMIN: [
@@ -90,6 +115,13 @@ export const CAPABILITIES: Record<Role, readonly Capability[]> = {
     "settings:write",
     "audit-log:read",
     "jobs:read",
+    "reviews:read",
+    "reviews:moderate",
+    // Codes promo (chantier E) : ADMIN seulement. Créer un code engage la
+    // marge et lire la liste révèle le coût cumulé des remises — même nature
+    // financière que `orders:refund`, elle aussi réservée à ADMIN.
+    "promos:read",
+    "promos:write",
   ],
   STAFF: [
     "auth:login",
@@ -100,6 +132,14 @@ export const CAPABILITIES: Record<Role, readonly Capability[]> = {
     "orders:transition:delivered",
     "customers:read",
     "jobs:read",
+    // Avis clients (chantier F) : les DEUX rôles internes modèrent. Le PO est
+    // explicite — « la modération n'est pas un écran, c'est un rituel qui doit
+    // tenir avec 1–3 personnes », et le KPI K8 (0 avis en attente > 7 jours)
+    // ne tient pas si une seule personne peut vider la file. Cela n'élargit
+    // rien d'autre : STAFF ne touche ni au catalogue, ni à l'argent, ni aux
+    // comptes ; un avis ne contient que le nom affiché et le texte du client.
+    "reviews:read",
+    "reviews:moderate",
   ],
 };
 
