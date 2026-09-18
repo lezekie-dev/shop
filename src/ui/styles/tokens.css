@@ -1856,3 +1856,212 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   PAGE KANBAN (/team) — tableau de pilotage
+   ══════════════════════════════════════════════════════════════ */
+
+/* Compteurs par colonne : lecture immédiate de la répartition, avant même
+   d'entrer dans le détail. Le chiffre domine, le libellé qualifie. */
+.kanban-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3);
+}
+@media (min-width: 900px) {
+  .kanban-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.kanban-stats__item {
+  display: grid;
+  gap: 2px;
+  padding: var(--sp-4);
+  background: var(--bg-raised);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  min-width: 0;
+}
+/* Liseré gauche coloré par colonne : repère visuel qui suit la même logique
+   que l'image, pour que les deux vues se lisent pareil. */
+.kanban-stats__item--done { border-left: 4px solid var(--success); }
+.kanban-stats__item--verify { border-left: 4px solid var(--warning); }
+.kanban-stats__item--doing { border-left: 4px solid var(--accent); }
+.kanban-stats__item--backlog { border-left: 4px solid var(--border-strong); }
+.kanban-stats__count {
+  font-family: var(--font-display);
+  font-size: var(--fs-display);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  line-height: 1;
+}
+.kanban-stats__label {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+.kanban-stats__hint {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+}
+
+/* Le board : colonnes côte à côte sur grand écran, empilées sur mobile.
+   `min-width: 0` partout, sinon une carte au texte long élargit la page
+   entière au lieu de passer à la ligne. */
+.kanban-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+}
+@media (min-width: 1000px) {
+  .kanban-board {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    align-items: start;
+  }
+}
+.kanban-col {
+  background: var(--bg-sand);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: var(--sp-3);
+  min-width: 0;
+}
+.kanban-col__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.kanban-col__label {
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+.kanban-col__count {
+  background: var(--bg-raised);
+  border-radius: var(--r-pill);
+  padding: 1px 9px;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  color: var(--text-strong);
+}
+/* Avertissement de goulot : affiché uniquement quand la colonne est un
+   point de blocage (voir `wip` dans kanban-data.json). */
+.kanban-col__wip {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  color: var(--warning);
+}
+.kanban-col__empty {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  font-style: italic;
+}
+.kanban-cards {
+  list-style: none;
+  margin: var(--sp-3) 0 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-2);
+}
+.kanban-card {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  min-width: 0;
+}
+.kanban-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+.kanban-card__badge {
+  background: var(--accent);
+  color: var(--text-inverse);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+  padding: 1px 6px;
+  border-radius: var(--r-sm);
+  letter-spacing: 0.04em;
+}
+.kanban-card__team {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  text-align: right;
+  min-width: 0;
+}
+.kanban-card__title {
+  margin: 0 0 2px;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  overflow-wrap: break-word;
+}
+.kanban-card__proof {
+  margin: 0;
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  overflow-wrap: break-word;
+}
+
+/* Tableaux de la page : réutilisent la logique de contrainte du projet
+   (`min-width: 0` + overflow local), sans dépendre du CSS de l'admin. */
+.table-wrap {
+  overflow-x: auto;
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  background: var(--bg-raised);
+}
+.kanban-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-small);
+}
+.kanban-table th,
+.kanban-table td {
+  text-align: left;
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--border-soft);
+  vertical-align: top;
+}
+.kanban-table thead th {
+  background: var(--bg-sand);
+  font-size: var(--fs-micro);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-label);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.kanban-table tbody tr:last-child th,
+.kanban-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.kanban-table th[scope="row"] {
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  white-space: nowrap;
+}
+.kanban-table .muted { color: var(--text-muted); }
+.kanban-table .accent { color: var(--accent); font-weight: var(--fw-semibold); }
+.kanban-table .mono {
+  font-family: var(--font-numeric);
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+}
+
+.kanban-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-lg);
+}
