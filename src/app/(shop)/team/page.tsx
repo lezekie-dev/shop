@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
-import { readKanbanData } from "@/server/kanban";
+import { readKanbanData, type KanbanCard } from "@/server/kanban";
 
 export const metadata: Metadata = {
   title: "Kanban — Projet Shop",
@@ -27,6 +27,40 @@ export const dynamic = "force-dynamic";
  * La source reste `docs/team/kanban-data.json` — le texte ET l'image en
  * découlent, donc ils ne peuvent pas diverger.
  */
+/**
+ * Regroupe les cartes par lot pour la colonne « Terminé ».
+ *
+ * Elle accumule une carte par tâche livrée depuis le début du projet : à 24
+ * cartes, le board mesurait 3043 px de haut et ne se lisait plus d'un coup
+ * d'œil — il devenait un journal. Une colonne terminée n'a plus rien à piloter :
+ * on la résume par lot (« 3 tâches livrées »), le détail restant dans
+ * kanban-data.json. Les colonnes actives gardent une carte par tâche, parce que
+ * c'est là que le travail se suit.
+ */
+function groupCards(
+  colId: string,
+  cards: KanbanCard[],
+): Array<KanbanCard & { count?: number }> {
+  const mine = cards.filter((c) => c.col === colId);
+  if (colId !== "done") return mine;
+
+  const groups = new Map<string, KanbanCard[]>();
+  for (const c of mine) {
+    groups.set(c.id, [...(groups.get(c.id) ?? []), c]);
+  }
+  return [...groups.entries()].map(([id, list]) => ({
+    col: "done",
+    id,
+    title: `${list.length} tâche${list.length > 1 ? "s" : ""} livrée${list.length > 1 ? "s" : ""}`,
+    team: list[0]!.team,
+    proof: list
+      .map((c) => c.title)
+      .slice(0, 3)
+      .join(" · ") + (list.length > 3 ? "…" : ""),
+    count: list.length,
+  }));
+}
+
 export default async function KanbanPage() {
   const data = await readKanbanData();
 
@@ -105,7 +139,7 @@ export default async function KanbanPage() {
 
           <div className="kanban-board">
             {counters.map((col) => {
-              const cards = data.cards.filter((c) => c.col === col.id);
+              const cards = groupCards(col.id, data.cards);
               return (
                 <div key={col.id} className="kanban-col">
                   <div className="kanban-col__head">

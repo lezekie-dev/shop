@@ -1917,9 +1917,15 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   gap: var(--sp-4);
 }
 @media (min-width: 1000px) {
+  /* Les colonnes VIDES se contentent de peu : leur laisser une largeur pleine
+     creusait un vide au milieu du board. Le `auto` répartit la place restante
+     sur les colonnes qui ont réellement des cartes. */
   .kanban-board {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, auto));
     align-items: start;
+  }
+  .kanban-col:has(.kanban-cards) {
+    min-width: 240px;
   }
 }
 .kanban-col {
