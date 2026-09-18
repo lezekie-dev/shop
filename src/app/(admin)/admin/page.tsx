@@ -1,7 +1,9 @@
 import Link from "next/link";
 
-import { requireCapability } from "@/server/guards";
+import { JOB_FAILURE_ALERT_THRESHOLD, jobLabel, type JobFailureAlert } from "@/domain/jobs";
+import { listJobFailureAlerts } from "@/server/admin-jobs";
 import { loadDashboardData, type StockAlert } from "@/server/admin-stats";
+import { requireCapability } from "@/server/guards";
 import { DataTable, RowChevron } from "@/ui/components/admin/data-table";
 import { OrderStatusBadge } from "@/ui/components/admin/order-status-badge";
 import {
@@ -15,6 +17,7 @@ import {
   IconCheck,
   IconEuro,
   IconOrders,
+  IconTasks,
 } from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
@@ -32,6 +35,11 @@ export default async function AdminDashboardPage() {
 
   const now = new Date();
   const data = await loadDashboardData(now);
+  // Alertes des tâches planifiées (AC J1) : un job qui échoue 3 fois de suite
+  // doit se voir ICI, sans SSH ni fichier de log. Requête distincte du reste du
+  // dashboard pour qu'un `JobRun` en échec ne puisse jamais être noyé dans les
+  // statistiques de vente.
+  const jobAlerts = await listJobFailureAlerts();
 
   const trendLabel = (pct: number | null) =>
     pct === null
@@ -291,7 +299,72 @@ export default async function AdminDashboardPage() {
           </div>
         </>
       )}
+
+      {/* AC J1 — « la section Alertes affiche un avertissement si un même job a
+          3 FAILED consécutifs ; en l'absence d'alertes, la section affiche
+          explicitement « Aucune alerte » ». On la rend TOUJOURS, y compris sans
+          commande : c'est justement quand la boutique est calme qu'un job cassé
+          passe inaperçu. */}
+      <JobAlertsSection alerts={jobAlerts} className="enter enter-5" />
     </div>
+  );
+}
+
+/** Section « Alertes » — tâches planifiées en échec répété (lot J). */
+function JobAlertsSection({
+  alerts,
+  className,
+}: {
+  alerts: readonly JobFailureAlert[];
+  className?: string;
+}) {
+  return (
+    <section className={className ? `admin-section ${className}` : "admin-section"}>
+      <div className="admin-section__head">
+        <h2 className="admin-section__title">Alertes</h2>
+        <Link href="/admin/taches">Voir les tâches →</Link>
+      </div>
+      {alerts.length === 0 ? (
+        <div className="empty-state">
+          <IconCheck className="empty-state__icon" />
+          {/* Un vide silencieux n'est pas une information : on dit
+              explicitement que la surveillance est passée et n'a rien trouvé. */}
+          <p className="empty-state__title">Aucune alerte</p>
+          <p className="empty-state__text">
+            Aucune tâche planifiée n&apos;a échoué {JOB_FAILURE_ALERT_THRESHOLD} fois de suite.
+            La sauvegarde et la réconciliation des paiements tournent normalement.
+          </p>
+          <Link href="/admin/taches" className="btn btn-secondary">
+            Voir le journal des tâches
+          </Link>
+        </div>
+      ) : (
+        <ul className="alert-list">
+          {alerts.map((alert) => (
+            <li key={alert.name} className="alert-row alert-row--critical">
+              <span>
+                <span className="alert-row__name">{jobLabel(alert.name)}</span>
+                <br />
+                <span className="alert-row__meta">
+                  <span className="num">{alert.name}</span> ·{" "}
+                  {formatDateTime(alert.lastStartedAt)}
+                  {alert.lastError ? (
+                    <>
+                      <br />
+                      {alert.lastError}
+                    </>
+                  ) : null}
+                </span>
+              </span>
+              <span className="badge badge-cancelled">
+                <span aria-hidden>✕</span>
+                {alert.consecutiveFailures} échecs
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 

@@ -260,3 +260,15 @@ export function IconCheck(props: IconProps) {
     </svg>
   );
 }
+
+/** Tâche planifiée — horloge avec une flèche de reprise (cron / récurrence). */
+export function IconTasks(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="11" cy="13" r="7.5" />
+      <path d="M11 9.5V13l2.5 1.5" />
+      <path d="M19.5 6.5a9.8 9.8 0 0 0-3.2-2.3" />
+      <path d="M19.8 2.8v3.9h-3.9" />
+    </svg>
+  );
+}

@@ -40,7 +40,8 @@ export type Capability =
   | "users:read"
   | "users:write"
   | "settings:write"
-  | "audit-log:read";
+  | "audit-log:read"
+  | "jobs:read";
 
 /**
  * Matrice rôle → capacités (CONVENTIONS §13).
@@ -61,6 +62,12 @@ export type Capability =
  *   - `POST /api/admin/orders/[id]/mark-paid` → `orders:transition:paid`
  *     (capacité ajoutée ici + §13). Confirmer un encaissement est un acte
  *     financier, au même titre que `orders:refund` : ADMIN seul.
+ *   - `/admin/taches` (lot J, journal des tâches planifiées) → `jobs:read`,
+ *     portée par les DEUX rôles. Un job de sauvegarde ou de réconciliation en
+ *     échec doit être visible par celui qui traite les commandes au quotidien ;
+ *     la page est en lecture seule et n'expose aucun secret (nom de tâche,
+ *     statut, durée, message d'erreur). C'est une information d'exploitation,
+ *     pas une donnée financière.
  */
 export const CAPABILITIES: Record<Role, readonly Capability[]> = {
   ADMIN: [
@@ -82,6 +89,7 @@ export const CAPABILITIES: Record<Role, readonly Capability[]> = {
     "users:write",
     "settings:write",
     "audit-log:read",
+    "jobs:read",
   ],
   STAFF: [
     "auth:login",
@@ -91,6 +99,7 @@ export const CAPABILITIES: Record<Role, readonly Capability[]> = {
     "orders:transition:shipped",
     "orders:transition:delivered",
     "customers:read",
+    "jobs:read",
   ],
 };
 

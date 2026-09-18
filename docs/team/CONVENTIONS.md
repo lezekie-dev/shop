@@ -747,6 +747,7 @@ le code. La capacité, elle, se teste à un seul endroit (le
 | `users:write`                       | ✅    | ❌    | Création / désactivation. |
 | `settings:write`                    | ✅    | ❌    | Paramètres boutique, PSP, livraison. |
 | `audit-log:read`                    | ✅    | ❌    | Lecture des pistes d'audit. |
+| `jobs:read`                         | ✅    | ✅    | Journal des tâches planifiées (`/admin/taches`, lot J) : lecture seule, aucune donnée financière — un job en échec doit être visible par celui qui traite les commandes. |
 
 ### Comment ça se branche côté code (S4)
 

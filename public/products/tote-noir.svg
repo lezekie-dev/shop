@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="800" height="800" role="img">
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="46%" r="52%">
+      <stop offset="0%" stop-color="#eadfc9"/>
+      <stop offset="100%" stop-color="#f2e9d8"/>
+    </radialGradient>
+  </defs>
+  <rect width="500" height="500" fill="#faf6ef"/>
+  <rect width="500" height="500" fill="url(#halo)"/>
+  <ellipse cx="250" cy="436" rx="150" ry="17" fill="rgba(42, 24, 16, 0.10)"/>
+  
+    <path d="M162 168 L338 168 L322 424 Q250 440 178 424 Z"
+          fill="#231610" stroke="#0f0a07" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M198 168 Q198 96 250 96 Q302 96 302 168" fill="none" stroke="#0f0a07" stroke-width="7" stroke-linecap="round"/>
+    <path d="M214 174 L206 418" fill="none" stroke="#0f0a07" stroke-width="3" opacity="0.35"/>
+    <path d="M286 174 L294 418" fill="none" stroke="#0f0a07" stroke-width="3" opacity="0.35"/>
+    <path d="M182 300 L318 300" fill="none" stroke="#0f0a07" stroke-width="3" opacity="0.22"/>
+</svg>

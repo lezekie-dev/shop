@@ -13,6 +13,7 @@ import {
   IconProducts,
   IconShield,
   IconStock,
+  IconTasks,
   IconUsers,
 } from "@/ui/components/icons";
 
@@ -45,6 +46,11 @@ export type AdminNavItem = {
 export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
   { href: "/admin", label: "Tableau de bord", Icon: IconDashboard, capability: "dashboard:view" },
   { href: "/admin/orders", label: "Commandes", Icon: IconOrders, capability: "orders:read" },
+  // Paiements en attente : ce sont des commandes qu'on ne doit pas expédier,
+  // donc du même niveau d'information que la liste des commandes — et le même
+  // droit (`orders:read`, ADMIN et STAFF). Les actions de la page, elles, sont
+  // filtrées par la matrice de capacités.
+  { href: "/admin/paiements", label: "Paiements", Icon: IconEuro, capability: "orders:read" },
   // Catalogue : ADMIN seulement — STAFF n'a pas `products:read` (CONVENTIONS §13).
   { href: "/admin/products", label: "Produits", Icon: IconProducts, capability: "products:read" },
   { href: "/admin/stock", label: "Stock", Icon: IconStock, capability: "products:read" },
@@ -53,6 +59,9 @@ export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
   { href: "/admin/emails", label: "Emails", Icon: IconEmails, capability: "orders:read" },
   // Gestion des comptes internes : ADMIN uniquement (users:read).
   { href: "/admin/users", label: "Utilisateurs", Icon: IconUsers, capability: "users:read" },
+  // Journal des tâches planifiées : les deux rôles. Un job en échec doit être
+  // visible par celui qui traite les commandes, pas seulement par l'admin.
+  { href: "/admin/taches", label: "Tâches", Icon: IconTasks, capability: "jobs:read" },
   // Sécurité du compte courant : accessible à tout compte interne connecté.
   { href: "/admin/security", label: "Sécurité", Icon: IconShield, capability: "auth:login" },
 ];

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="800" height="800" role="img">
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="46%" r="52%">
+      <stop offset="0%" stop-color="#eadfc9"/>
+      <stop offset="100%" stop-color="#f2e9d8"/>
+    </radialGradient>
+  </defs>
+  <rect width="500" height="500" fill="#faf6ef"/>
+  <rect width="500" height="500" fill="url(#halo)"/>
+  <ellipse cx="250" cy="436" rx="150" ry="17" fill="rgba(42, 24, 16, 0.10)"/>
+  
+    <path d="M150 92 L196 74 Q250 116 304 74 L350 92 L392 176 L340 200 L336 404 Q250 424 164 404 L160 200 L108 176 Z"
+          fill="#231610" stroke="#0f0a07" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M196 74 Q250 118 304 74" fill="none" stroke="#0f0a07" stroke-width="4" stroke-linecap="round"/>
+    <path d="M202 82 Q250 122 298 82" fill="none" stroke="#0f0a07" stroke-width="3" stroke-linecap="round" opacity="0.55"/>
+    <path d="M196 300 Q250 314 304 300" fill="none" stroke="#0f0a07" stroke-width="3" stroke-linecap="round" opacity="0.4"/>
+    <path d="M196 340 Q250 354 304 340" fill="none" stroke="#0f0a07" stroke-width="3" stroke-linecap="round" opacity="0.28"/>
+    <path d="M108 176 L160 200" stroke="#0f0a07" stroke-width="3" opacity="0.35"/>
+    <path d="M392 176 L340 200" stroke="#0f0a07" stroke-width="3" opacity="0.35"/>
+</svg>

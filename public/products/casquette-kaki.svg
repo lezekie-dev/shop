@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="800" height="800" role="img">
+  <defs>
+    <radialGradient id="halo" cx="50%" cy="46%" r="52%">
+      <stop offset="0%" stop-color="#eadfc9"/>
+      <stop offset="100%" stop-color="#ecdfc4"/>
+    </radialGradient>
+  </defs>
+  <rect width="500" height="500" fill="#faf6ef"/>
+  <rect width="500" height="500" fill="url(#halo)"/>
+  <ellipse cx="250" cy="436" rx="150" ry="17" fill="rgba(42, 24, 16, 0.10)"/>
+  
+    <path d="M138 262 Q138 152 250 152 Q346 152 352 232 L352 262 Q250 292 138 262 Z"
+          fill="#6f6a4d" stroke="#494530" stroke-width="6" stroke-linejoin="round"/>
+    <path d="M172 168 Q250 208 336 176" fill="none" stroke="#494530" stroke-width="3.5" opacity="0.6"/>
+    <path d="M250 154 L250 264" fill="none" stroke="#494530" stroke-width="3.5" opacity="0.45"/>
+    <path d="M206 160 Q228 214 218 268" fill="none" stroke="#494530" stroke-width="3" opacity="0.35"/>
+    <path d="M294 160 Q272 214 282 268" fill="none" stroke="#494530" stroke-width="3" opacity="0.35"/>
+    <path d="M138 254 Q74 258 52 282 Q66 300 108 300 Q132 292 140 274 Z"
+          fill="#6f6a4d" stroke="#494530" stroke-width="6" stroke-linejoin="round"/>
+    <circle cx="250" cy="150" r="9" fill="#6f6a4d" stroke="#494530" stroke-width="3.5"/>
+    <path d="M150 206 Q150 178 176 170" fill="none" stroke="#494530" stroke-width="3" opacity="0.5"/>
+</svg>

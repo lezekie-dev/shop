@@ -392,6 +392,21 @@
 .data-table__row--out td {
   background: var(--danger-tint);
 }
+/* Ligne d'une exécution de tâche EN ÉCHEC (page /admin/taches).
+   Le fond rouge pâle double le badge et le message : il attire l'œil sur la
+   ligne pendant le balayage vertical, mais l'information reste portée par le
+   texte et le symbole (cf. job-status-badge.tsx). */
+.data-table__row--alert td {
+  background: var(--danger-tint);
+}
+/* Icône en ligne dans une cellule (ex. « Terminée sans erreur ») : suit la
+   couleur du texte et ne déforme pas la hauteur de ligne. */
+.admin-inline-icon {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: var(--sp-1);
+}
 
 /* ── Filtres (statut de commande) ──
    Les pastilles `.filters` / `.filters__pill` / `.filters__count` sont
