@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { formatMoneyEur } from "@/domain/pricing";
 import { AddToCartForm } from "@/ui/components/add-to-cart-form";
+import { ProductVisual } from "@/ui/components/product-visual";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +17,7 @@ export default async function ProductDetailPage({
     where: { slug: params.slug },
     include: {
       category: true,
+      images: { orderBy: { position: "asc" } },
       variants: {
         where: { active: true },
         orderBy: { priceCents: "asc" },
@@ -49,10 +51,15 @@ export default async function ProductDetailPage({
     <div className="page">
       <div className="detail enter enter-1">
         <div className="detail__media">
-          <span className="detail__media-emoji" aria-hidden>
-            📦
-          </span>
-          <p>Visuel du produit à venir</p>
+          <ProductVisual
+            url={product.images[0]?.url ?? null}
+            alt={product.images[0]?.alt ?? `Visuel de ${product.name}`}
+            productName={product.name}
+            width={product.images[0]?.width ?? 800}
+            height={product.images[0]?.height ?? 800}
+            sizes="(max-width: 900px) 100vw, 46vw"
+            priority
+          />
         </div>
 
         <div className="detail__info">

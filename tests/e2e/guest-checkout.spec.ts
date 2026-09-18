@@ -33,10 +33,11 @@ test("guest checkout: ajoute 2 produits → checkout → succès", async ({ page
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 
   // 3. Cliquer sur le premier produit → fiche produit
-  //    On filtre les liens de la grille produit en s'assurant qu'ils pointent
-  //    vers /products/<slug>. L'header (nav) a aussi des <a> mais n'est pas
-  //    dans un <ul>.
-  const firstProductLink = page.locator('ul li a[href^="/products/"]').first();
+  //    Le lien du NOM (`.card-title`) est ciblé explicitement : la carte
+  //    contient désormais deux liens vers la même fiche (le visuel et le nom),
+  //    et l'ordre du DOM ferait sélectionner le visuel — qui n'a pas de texte,
+  //    donc `firstProductName` serait vide.
+  const firstProductLink = page.locator(".card-grid li a.card-title").first();
   await expect(firstProductLink).toBeVisible();
   const firstProductName = (await firstProductLink.textContent())?.trim() ?? "";
   expect(firstProductName.length).toBeGreaterThan(0);

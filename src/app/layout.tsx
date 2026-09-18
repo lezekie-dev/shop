@@ -6,6 +6,7 @@ import "@/ui/styles/tokens.css";
 import "@/ui/styles/shell.css";
 
 import { SiteHeader } from "@/ui/components/site-header";
+import { SiteFooter } from "@/ui/components/site-footer";
 
 /*
  * Les deux polices du design system sont chargées via next/font : Next les
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body className={`${fraunces.variable} ${inter.variable}`}>
         <SiteHeader />
         <main className="site-main">{children}</main>
+        <SiteFooter />
       </body>
     </html>
   );

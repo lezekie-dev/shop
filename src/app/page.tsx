@@ -1,18 +1,38 @@
 import Link from "next/link";
 
+import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
+import { ProductVisual } from "@/ui/components/product-visual";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const categories = await prisma.category.findMany({
-    orderBy: { name: "asc" },
-    include: {
-      _count: {
-        select: { products: { where: { active: true } } },
+  const [categories, featured] = await Promise.all([
+    prisma.category.findMany({
+      orderBy: { name: "asc" },
+      include: {
+        _count: {
+          select: { products: { where: { active: true } } },
+        },
       },
-    },
-  });
+    }),
+    // Les derniers produits publiés, avec leur visuel de couverture et leur
+    // prix d'entrée : c'est ce qui donne envie de cliquer depuis l'accueil.
+    prisma.product.findMany({
+      where: { active: true },
+      orderBy: { createdAt: "desc" },
+      take: 4,
+      include: {
+        category: true,
+        images: { orderBy: { position: "asc" }, take: 1 },
+        variants: {
+          where: { active: true },
+          orderBy: { priceCents: "asc" },
+          select: { priceCents: true },
+        },
+      },
+    }),
+  ]);
 
   const totalProducts = categories.reduce((acc, c) => acc + c._count.products, 0);
 
@@ -33,7 +53,48 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="section enter enter-2">
+        {featured.length > 0 && (
+          <section className="section enter enter-2">
+            <div className="section__head">
+              <h2 className="section__title">Nouveautés</h2>
+              <Link href="/products">Tout voir →</Link>
+            </div>
+            <ul className="card-grid">
+              {featured.map((p) => {
+                const cover = p.images[0] ?? null;
+                const minPrice = p.variants[0]?.priceCents ?? null;
+                return (
+                  <li key={p.id} className="card card-interactive">
+                    <Link href={`/products/${p.slug}`} className="card-link">
+                      <ProductVisual
+                        url={cover?.url ?? null}
+                        alt={cover?.alt ?? `Visuel de ${p.name}`}
+                        productName={p.name}
+                        width={cover?.width ?? 800}
+                        height={cover?.height ?? 800}
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 45vw, 260px"
+                        priority
+                      />
+                    </Link>
+                    <div className="card-body">
+                      <p className="card-meta">{p.category.name}</p>
+                      <Link href={`/products/${p.slug}`} className="card-title">
+                        {p.name}
+                      </Link>
+                      {minPrice !== null && (
+                        <p className="card-price">
+                          <span className="money">{formatMoneyEur(minPrice)}</span>
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        )}
+
+        <section className="section enter enter-3">
           <div className="section__head">
             <h2 className="section__title">Catégories</h2>
             <p className="section__sub">

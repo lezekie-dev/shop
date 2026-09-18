@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
+import { ProductVisual } from "@/ui/components/product-visual";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,7 @@ export default async function ProductsListPage({
       orderBy: { createdAt: "desc" },
       include: {
         category: true,
+        images: { orderBy: { position: "asc" }, take: 1 },
         variants: {
           where: { active: true },
           orderBy: { priceCents: "asc" },
@@ -134,23 +136,38 @@ export default async function ProductsListPage({
         </div>
       ) : (
         <ul className="card-grid enter enter-3">
-          {items.map(({ product, minPrice }) => (
-            <li key={product.id} className="card card-interactive">
-              <p className="card-meta">{product.category.name}</p>
-              <Link href={`/products/${product.slug}`} className="card-title">
-                {product.name}
-              </Link>
-              <p className="card-price">
-                {minPrice !== null ? (
-                  <>
-                    À partir de <span className="money">{formatMoneyEur(minPrice)}</span>
-                  </>
-                ) : (
-                  "Prix indisponible"
-                )}
-              </p>
-            </li>
-          ))}
+          {items.map(({ product, minPrice }) => {
+            const cover = product.images[0] ?? null;
+            return (
+              <li key={product.id} className="card card-interactive">
+                <Link href={`/products/${product.slug}`} className="card-link">
+                  <ProductVisual
+                    url={cover?.url ?? null}
+                    alt={cover?.alt ?? `Visuel de ${product.name}`}
+                    productName={product.name}
+                    width={cover?.width ?? 800}
+                    height={cover?.height ?? 800}
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 45vw, 320px"
+                  />
+                </Link>
+                <div className="card-body">
+                  <p className="card-meta">{product.category.name}</p>
+                  <Link href={`/products/${product.slug}`} className="card-title">
+                    {product.name}
+                  </Link>
+                  <p className="card-price">
+                    {minPrice !== null ? (
+                      <>
+                        À partir de <span className="money">{formatMoneyEur(minPrice)}</span>
+                      </>
+                    ) : (
+                      "Prix indisponible"
+                    )}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

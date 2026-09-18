@@ -86,19 +86,45 @@ model Category {
 }
 
 model Product {
-  id          String    @id @default(cuid())
-  slug        String    @unique
+  id          String         @id @default(cuid())
+  slug        String         @unique
   name        String
-  description String    @db.Text
+  description String         @db.Text
   categoryId  String
-  active      Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  category    Category  @relation(fields: [categoryId], references: [id])
+  active      Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  category    Category       @relation(fields: [categoryId], references: [id])
   variants    Variant[]
+  images      ProductImage[]
 
   @@index([categoryId])
   @@index([active])
+}
+
+/// Visuel d'un produit.
+///
+/// Table séparée (et non un champ `imageUrl` sur Product) parce qu'une fiche
+/// e-commerce a besoin de plusieurs visuels ordonnés : le marchand doit pouvoir
+/// ajouter, réordonner et supprimer. `position` porte l'ordre d'affichage, et
+/// la contrainte d'unicité évite deux visuels au même rang.
+///
+/// `width`/`height` sont stockés pour que le rendu réserve la bonne place avant
+/// le chargement (zéro décalage de mise en page — critique sur mobile 3G).
+/// `alt` est obligatoire : un visuel sans texte alternatif est inaccessible.
+model ProductImage {
+  id        String   @id @default(cuid())
+  productId String
+  url       String
+  alt       String
+  position  Int      @default(0)
+  width     Int?
+  height    Int?
+  createdAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, position])
+  @@index([productId])
 }
 
 model Variant {

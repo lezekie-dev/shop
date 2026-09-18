@@ -668,7 +668,65 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .card-grid > li {
   display: flex;
   flex-direction: column;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+
+/* ── Visuel produit ───────────────────────────────────────────
+   Le visuel est un carré : ratio fixe pour que la grille reste régulière
+   quelle que soit la photo fournie par le marchand. `overflow: hidden` +
+   radius gardent les coins arrondis de la carte. */
+.product-visual {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--bg-sand);
+  min-width: 0;
+}
+.product-visual__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--dur-slow) var(--ease);
+}
+/* Zoom doux au survol de la carte : signale l'interactivité sans mouvement
+   brusque. Désactivé par prefers-reduced-motion (règle globale). */
+.card-interactive:hover .product-visual__img,
+.card-link:hover .product-visual__img {
+  transform: scale(1.03);
+}
+.product-visual--empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: var(--sp-2);
+  border: 1.5px dashed var(--border-strong);
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+.product-visual__placeholder {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+/* Le lien qui enveloppe le visuel ne doit pas hériter du style de lien texte. */
+.card-link {
+  display: block;
+  text-decoration: none;
+  border-radius: var(--r-md);
+}
+.card-link:hover {
+  text-decoration: none;
+}
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  flex: 1;
   min-width: 0;
 }
 
