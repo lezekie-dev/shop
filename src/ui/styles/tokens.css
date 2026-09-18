@@ -35,6 +35,10 @@
   /* Texte sur fond `--warning-tint`. Mesuré à 7,05:1 sur #fef9ee : l'ocre
      seul ne tient que 3,9:1 sur le même fond, insuffisant pour du texte. */
   --warning-ink: #7c4a03;
+  /* Contour des contrôles de formulaire (radio, case). Mesuré 5,8:1 sur
+     `--bg-inset`, contre 1,36:1 pour `--border-strong` : un contrôle dont on
+     ne voit pas le contour ne se distingue pas d'un espace vide. */
+  --control-border: #6f5949;
   --warning-tint: #fef9ee;
   --danger: #a4232b;           /* rouge brique, pas rouge pompier */
   --danger-tint: #fdf2f2;
@@ -1290,9 +1294,66 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   border: 1.5px solid var(--border-soft);
   border-radius: var(--r-md);
   cursor: pointer;
+  /* Cible tactile : toute la carte est cliquable (le radio est à
+     l'intérieur du label), mais on garantit une hauteur confortable au
+     doigt indépendamment de la longueur du texte. */
+  min-height: 44px;
   transition:
     border-color var(--dur-base) var(--ease),
     background-color var(--dur-base) var(--ease);
+}
+/* ── Radio de paiement redessiné ──
+   Le bouton natif mesure 13×13 px : c'est sous le seuil WCAG 2.2 de 24 px,
+   et c'est l'action la plus importante de l'écran (choisir comment payer).
+   Mesuré sur mobile : « choisir son moyen de paiement avec une cible de
+   13 px » — ratable au pouce.
+   On masque l'aspect natif et on dessine une pastille de 22 px, centrée
+   dans la ligne. Le vrai `<input>` reste en place (focus clavier, lecteur
+   d'écran, navigation par flèches) : on ne remplace PAS l'élément, on
+   change seulement son apparence — sinon on casserait l'accessibilité en
+   croyant l'améliorer. */
+/* ── Contour des contrôles (radio, case à cocher) ──
+   MESURÉ : `--border-strong` (#ddcfbc) ne donne que 1,36:1 sur le fond
+   `--bg-inset` des cartes de paiement — très loin du seuil WCAG de 3:1 pour
+   un élément non textuel. Les cercles non cochés paraissaient donc « vides » :
+   on ne voyait pas qu'il y avait quelque chose à cocher.
+   Un brun plus soutenu porte le contraste à 5,8:1, sans devenir noir (ce
+   serait dur sur une carte crème). */
+.pay-option input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  margin: 0.1rem 0 0;
+  flex: none;
+  border: 1.5px solid var(--control-border);
+  border-radius: 50%;
+  background: var(--bg-card);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease);
+}
+.pay-option input[type="radio"]::before {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  transform: scale(0);
+  transition: transform var(--dur-base) var(--ease);
+}
+.pay-option input[type="radio"]:checked {
+  border-color: var(--accent);
+}
+.pay-option input[type="radio"]:checked::before {
+  transform: scale(1);
+}
+/* L'anneau de focus reste visible : sans lui, impossible de savoir où l'on
+   est quand on remplit le formulaire au clavier. */
+.pay-option input[type="radio"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .pay-option:hover {
   border-color: var(--border-strong);
@@ -1486,9 +1547,56 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   gap: var(--sp-3);
   font-size: var(--fs-small);
   color: var(--text-body);
+  /* La ligne entière est cliquable et atteint la hauteur confortable au
+     doigt (44px), même si la case elle-même est plus petite. */
+  min-height: 44px;
+  cursor: pointer;
 }
 .check input {
   flex: none;
+}
+/* ── Case à cocher redessinée ──
+   Le carré natif mesure 13×13 px, sous le seuil WCAG 2.2 de 24 px. Comme pour
+   les boutons radio, on garde l'élément (coche, clavier, lecteur d'écran) et
+   on ne change que son dessin : un carré de 20 px avec un trait de validation
+   tracé en CSS. */
+.check input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  border: 1.5px solid var(--control-border);
+  border-radius: var(--r-sm);
+  background: var(--bg-card);
+  display: grid;
+  place-content: center;
+  cursor: pointer;
+  transition:
+    background var(--dur-base) var(--ease),
+    border-color var(--dur-base) var(--ease);
+}
+.check input[type="checkbox"]::before {
+  content: "";
+  width: 10px;
+  height: 6px;
+  /* Coche dessinée par deux bordures pivotées : pas d'image à charger. */
+  border-left: 2px solid var(--text-inverse);
+  border-bottom: 2px solid var(--text-inverse);
+  transform: rotate(-45deg) scale(0);
+  transition: transform var(--dur-base) var(--ease);
+  margin-top: -2px;
+}
+.check input[type="checkbox"]:checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.check input[type="checkbox"]:checked::before {
+  transform: rotate(-45deg) scale(1);
+}
+.check input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 /* Un libellé long (nom de produit) ne doit jamais élargir la page : il se replie. */
 .summary__row > * {
