@@ -762,7 +762,14 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   line-height: var(--lh-mega);
   letter-spacing: var(--ls-mega);
   font-weight: var(--fw-semibold);
-  max-width: 15ch;
+  /* `text-wrap: balance` : le navigateur répartit les mots sur les lignes pour
+     éviter une dernière ligne orpheline. L'ancienne version forçait un retour
+     manuel (`<br />`) ET un `max-width: 15ch` qui ne pouvait jamais s'appliquer
+     (la colonne du hero ne fait que 528px, donc bien moins que 15ch de ce
+     corps). Résultat mesuré à 1440px : TROIS lignes et une veuve — « un. »
+     seul. Sans retour manuel, le navigateur compose correctement. */
+  text-wrap: balance;
+  max-width: 22ch;
 }
 .hero__lead {
   margin: 0;

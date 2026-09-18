@@ -113,9 +113,7 @@ export default async function HomePage() {
           <div className="hero__inner">
             <p className="eyebrow">Sélection {new Date().getFullYear()}</p>
             <h1 className="hero__title">
-              Des objets utiles,
-              <br />
-              choisis un par un.
+              Des objets utiles, choisis un par un.
             </h1>
             <p className="hero__lead">
               Une petite sélection de vêtements et d&apos;accessoires en toile et coton.
