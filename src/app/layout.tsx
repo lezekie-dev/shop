@@ -7,6 +7,7 @@ import "@/ui/styles/shell.css";
 
 import { SiteHeader } from "@/ui/components/site-header";
 import { SiteFooter } from "@/ui/components/site-footer";
+import { loadHeaderCategories } from "@/server/catalog";
 
 /*
  * Les deux polices du design system sont chargées via next/font : Next les
@@ -52,11 +53,27 @@ export const metadata: Metadata = {
     "Une petite sélection de vêtements et d'accessoires en toile et coton. Commande sans compte, paiement Mobile Money ou virement, expédition suivie.",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // La navigation par catégorie de l'en-tête vient de la base, dans l'ordre
+  // d'affichage voulu par le marchand (`position`). Elle est chargée ICI, côté
+  // serveur : passer par un `fetch` client ferait apparaître la barre de
+  // navigation en second, ce qui est plus coûteux sur 3G qu'une requête
+  // indexée sur une table de quelques lignes.
+  //
+  // `loadHeaderCategories` ne lève jamais : une panne de cette requête ne doit
+  // pas empêcher l'affichage du site (ni l'accès à /admin/login, qui sert
+  // justement à réparer la boutique).
+  //
+  // Compromis assumé : cette requête tourne aussi pour les pages /admin, où
+  // l'en-tête public se cache. Coût : une requête sur une petite table. Le
+  // supprimer demanderait de sortir l'en-tête du layout racine (toutes les
+  // routes concernées) — hors périmètre de cette carte.
+  const categories = await loadHeaderCategories();
+
   return (
     <html lang="fr">
       <body className={`${fraunces.variable} ${inter.variable}`}>
-        <SiteHeader />
+        <SiteHeader categories={categories} />
         <main className="site-main">{children}</main>
         <SiteFooter />
       </body>

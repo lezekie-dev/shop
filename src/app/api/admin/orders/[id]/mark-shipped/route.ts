@@ -2,9 +2,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { canTransitionTo } from "@/domain/order";
-import { requireAdminApi } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { sendOrderShipped } from "@/server/email";
+import { requireApiCapability } from "@/server/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +22,18 @@ const bodySchema = z.object({
  * Transitions acceptées : PAID → SHIPPED (raccourci admin, sans étape de
  * préparation explicite) ou PREPARING → SHIPPED (chemin nominal du domaine).
  * Protégé par la session admin (même vérification que `requireAdmin`).
+ *
+ * Capacité `orders:transition:shipped` : STAFF expédie au quotidien, donc il la
+ * porte (CONVENTIONS §13). L'annulation et le remboursement, eux, restent
+ * réservés à ADMIN.
  */
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
-  const admin = await requireAdminApi(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Authentification admin requise" }, { status: 401 });
-  }
+  const access = await requireApiCapability(req, "orders:transition:shipped");
+  if (!access.ok) return access.response;
+  const admin = access.user;
 
   let payload: unknown;
   try {

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireCapability } from "@/server/guards";
 import { canMarkPaid, canMarkShipped, getAdminOrderDetail } from "@/server/admin-orders";
 import { OrderActions } from "@/ui/components/admin/order-actions";
 import { OrderStatusBadge } from "@/ui/components/admin/order-status-badge";
@@ -26,7 +26,8 @@ export default async function AdminOrderDetailPage({
 }: {
   params: { id: string };
 }) {
-  await requireAdmin();
+  // Détail d'une commande : `orders:read`, porté par ADMIN et STAFF.
+  await requireCapability("orders:read");
 
   const order = await getAdminOrderDetail(params.id);
   if (!order) notFound();

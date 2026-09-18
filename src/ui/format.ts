@@ -27,3 +27,15 @@ export function formatDayShort(date: Date | string): string {
 function toDate(value: Date | string): Date {
   return value instanceof Date ? value : new Date(value);
 }
+
+/**
+ * Découpe un secret base32 en groupes de 4 (« JBSW Y3DP EHPK 3PXP »).
+ *
+ * Pourquoi ici et pas dans `src/server/totp.ts` : c'est de la PRÉSENTATION, et
+ * un composant client ne peut pas importer le module TOTP (il traîne
+ * `node:crypto`). La mise en forme vit donc dans la couche UI, où elle est
+ * utilisable des deux côtés.
+ */
+export function formatTotpSecret(secret: string): string {
+  return secret.replace(/(.{4})/g, "$1 ").trim();
+}

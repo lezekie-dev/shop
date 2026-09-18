@@ -2,8 +2,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
-import { requireAdminApi } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { requireApiCapability } from "@/server/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +16,8 @@ export const dynamic = "force-dynamic";
  *
  * Un `active: false` n'est PAS une suppression : les commandes passées gardent
  * leurs snapshots, donc désactiver un produit ne casse aucun historique.
+ *
+ * Capacité `products:write` (ADMIN) : STAFF ne gère pas le catalogue.
  */
 
 const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -42,10 +44,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
-  const admin = await requireAdminApi(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Authentification admin requise" }, { status: 401 });
-  }
+  const access = await requireApiCapability(req, "products:write");
+  if (!access.ok) return access.response;
+  const admin = access.user;
 
   let payload: unknown;
   try {

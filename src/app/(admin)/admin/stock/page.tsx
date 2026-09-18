@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireCapability } from "@/server/guards";
 import { LOW_STOCK_THRESHOLD } from "@/server/admin-stats";
 import {
   listStockOverview,
@@ -23,7 +23,8 @@ export const dynamic = "force-dynamic";
  * bandeau d'en-tête annonce le nombre d'alertes avant qu'on ait à scroller.
  */
 export default async function AdminStockPage() {
-  await requireAdmin();
+  // Stock = propriété du catalogue : capacité `products:read`, donc ADMIN seul.
+  await requireCapability("products:read");
   const variants = await listStockOverview();
 
   const outOfStock = variants.filter((variant) => variant.level === "out").length;

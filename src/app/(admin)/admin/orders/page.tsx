@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireCapability } from "@/server/guards";
 import {
   ORDERS_PAGE_SIZE,
   buildOrdersHref,
@@ -38,7 +38,9 @@ export default async function AdminOrdersPage({
 }: {
   searchParams: SearchParams;
 }) {
-  await requireAdmin();
+  // Les commandes sont le cœur du travail d'un opérateur : `orders:read` est
+  // porté par ADMIN et STAFF (CONVENTIONS §13).
+  await requireCapability("orders:read");
 
   const status = parseStatusFilter(searchParams.status);
   const requestedPage = parsePage(searchParams.page);

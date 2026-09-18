@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireCapability } from "@/server/guards";
 import {
   emailTemplateLabel,
   getOutboxEmail,
@@ -28,7 +28,9 @@ export default async function AdminEmailsPage({
 }: {
   searchParams: SearchParams;
 }) {
-  await requireAdmin();
+  // Boîte d'envoi des emails de commande : même niveau d'information que la
+  // liste des commandes, donc `orders:read` (ADMIN et STAFF).
+  await requireCapability("orders:read");
 
   const emails = await listOutboxEmails();
   const selectedId = typeof searchParams.email === "string" ? searchParams.email : null;

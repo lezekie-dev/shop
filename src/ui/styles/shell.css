@@ -151,6 +151,105 @@
   }
 }
 
+/* ── Recherche + catégories dans l'en-tête ────────────────────────────
+   POURQUOI l'en-tête s'empile en trois niveaux sur mobile au lieu de tenir
+   sur une ligne : à 360px, marque + catégories + recherche + panier sur une
+   seule rangée obligent soit à tronquer le nom de la boutique, soit à réduire
+   la barre de recherche sous la taille d'une cible tactile. Sur la cible
+   principale du projet (téléphone en 3G), les deux sont des échecs.
+
+   L'ordre est piloté par `order` : sur mobile, marque + panier d'abord (le
+   panier reste à portée de pouce), puis la recherche (pleine largeur), puis
+   les catégories (rangée qui défile au doigt). */
+
+.site-header__inner {
+  /* `wrap` + `order` : la même liste d'enfants donne deux dispositions. */
+  flex-wrap: wrap;
+}
+
+.site-header__search {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  order: 4;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.site-header__search-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* 40px de haut : cible tactile confortable sans faire grossir la barre
+     collante, qui rogne la hauteur d'écran disponible à chaque scroll. */
+  min-height: 40px;
+  background: var(--bg-inset);
+}
+.site-header__search-submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  padding: 0;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--border-soft);
+  background: var(--bg-raised);
+  color: var(--text-strong);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+.site-header__search-submit:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.site-header__search-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.site-header__cats {
+  order: 5;
+  flex: 1 1 100%;
+  /* Beaucoup de catégories ne doivent pas pousser la page en largeur : la
+     rangée défile horizontalement, sans barre de défilement visible (elle
+     mange de la hauteur utile sur téléphone et le geste de balayage est
+     naturel). */
+  overflow-x: auto;
+  scrollbar-width: none;
+  min-width: 0;
+}
+.site-header__cats::-webkit-scrollbar {
+  display: none;
+}
+.site-header__cats .site-header__link {
+  /* Un lien de navigation qui se rétrécit devient illisible : il garde sa
+     largeur et la rangée défile. */
+  flex: none;
+}
+
+/* Au-delà de 720px, tout tient sur une ligne : marque, catégories, recherche
+   (poussée à droite) et panier. La recherche ne part plus sur sa propre
+   ligne, elle reprend une largeur fixe lisible. */
+@media (min-width: 720px) {
+  .site-header__search {
+    order: 3;
+    flex: 0 1 18rem;
+    margin-left: auto;
+  }
+  .site-header__cats {
+    order: 2;
+    flex: 0 1 auto;
+    /* Assez de place pour tout afficher : plus besoin de faire défiler, les
+       catégories passent à la ligne si l'écran est vraiment étroit. */
+    overflow: visible;
+    flex-wrap: wrap;
+  }
+}
+
 /* Le <main> racine ne plafonne PAS la largeur : chaque layout (boutique,
    back-office) pose son propre plafond via son conteneur interne. Plafonner
    ici écrasait la largeur du back-office, qui a besoin de plus de place pour

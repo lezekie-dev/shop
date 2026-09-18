@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireCapability } from "@/server/guards";
 import { loadDashboardData, type StockAlert } from "@/server/admin-stats";
 import { DataTable, RowChevron } from "@/ui/components/admin/data-table";
 import { OrderStatusBadge } from "@/ui/components/admin/order-status-badge";
@@ -27,7 +27,8 @@ export const dynamic = "force-dynamic";
  * courante (30 j) à la précédente, et chaque carte porte son historique 7 jours.
  */
 export default async function AdminDashboardPage() {
-  await requireAdmin();
+  // Tableau de bord : lecture seule, ouverte aux deux rôles (CONVENTIONS §13).
+  await requireCapability("dashboard:view");
 
   const now = new Date();
   const data = await loadDashboardData(now);

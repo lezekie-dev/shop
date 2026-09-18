@@ -1,53 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import type { PaymentStatus } from "@prisma/client";
 
 import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
 import { Money } from "@/ui/components/money";
+import { OrderProgress } from "@/ui/components/order-progress";
 import { StatusBadge } from "@/ui/components/status-badge";
 import { formatDateTime } from "@/ui/format";
+import {
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_STATUS_META,
+  pendingPaymentHref,
+} from "@/ui/payment-labels";
 
 export const dynamic = "force-dynamic";
-
-/** Cycle de vie affiché : le client doit voir où en est sa commande, pas juste
- *  un état isolé. Les dates viennent des champs réels de la commande. */
-const STEPS = [
-  { key: "placed", label: "Commandé" },
-  { key: "paid", label: "Payé" },
-  { key: "shipped", label: "Expédié" },
-  { key: "delivered", label: "Livré" },
-] as const;
-
-const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  mock: "Paiement simulé (test)",
-  mobile_money: "Mobile Money (Orange / MTN)",
-  bank_transfer: "Virement bancaire",
-  stripe: "Carte bancaire (Stripe)",
-};
-
-type PaymentStatusMeta = { label: string; className: string; symbol: string };
-
-const PAYMENT_STATUS_META: Record<PaymentStatus, PaymentStatusMeta> = {
-  PENDING: { label: "En attente", className: "badge badge-pending", symbol: "⏳" },
-  SUCCEEDED: { label: "Encaissé", className: "badge badge-paid", symbol: "✓" },
-  FAILED: { label: "Échoué", className: "badge badge-cancelled", symbol: "✕" },
-  REFUNDED: { label: "Remboursé", className: "badge badge-neutral", symbol: "↩" },
-};
-
-/**
- * Cible des instructions de paiement encore attendues, selon la méthode.
- * `null` quand aucune page d'instructions n'existe pour ce moyen.
- */
-function pendingPaymentHref(
-  provider: string,
-  paymentRef: string | null,
-): string | null {
-  if (!paymentRef) return null;
-  if (provider === "bank_transfer") return `/paiement/virement/${paymentRef}`;
-  if (provider === "mobile_money") return `/paiement/mobile-money/${paymentRef}`;
-  return null;
-}
 
 export default async function OrderDetailPage({
   params,
@@ -82,18 +48,7 @@ export default async function OrderDetailPage({
   }
 
   const deliveredAt = order.shipments.find((s) => s.deliveredAt !== null)?.deliveredAt ?? null;
-  const stepDates: Array<Date | null> = [
-    order.placedAt,
-    order.paidAt,
-    order.shippedAt,
-    deliveredAt,
-  ];
-  const completed = stepDates.map((d) => d !== null);
   const stopped = order.status === "CANCELLED" || order.status === "REFUNDED";
-  // `-1` : plus aucune étape n'est « en cours », le parcours s'est arrêté.
-  const currentIndex = stopped
-    ? -1
-    : completed.reduce((acc, done, i) => (done ? i : acc), 0);
 
   const tracking = order.shipments.find((s) => s.trackingNo !== null) ?? null;
   const pendingPayment = order.status === "PENDING_PAYMENT";
@@ -146,41 +101,13 @@ export default async function OrderDetailPage({
         <div className="section">
           <div className="card">
             <h2 className="card__title">Progression</h2>
-            <ol className="steps">
-              {STEPS.map((step, i) => {
-                const done = completed[i] === true && i !== currentIndex;
-                const current = i === currentIndex;
-                const className = [
-                  "steps__item",
-                  done ? "steps__item--done" : "",
-                  current ? "steps__item--current" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ");
-                const date = stepDates[i] ?? null;
-                const isLastStep = i === STEPS.length - 1;
-                return (
-                  <li key={step.key} className={className}>
-                    <span className="steps__dot" aria-hidden>
-                      {done ? "✓" : i + 1}
-                    </span>
-                    <div className="actions">
-                      <span className="steps__label">{step.label}</span>
-                      {current && (
-                        <span
-                          className={
-                            isLastStep ? "badge badge-paid" : "badge badge-pending"
-                          }
-                        >
-                          {isLastStep ? "Terminée" : "En cours"}
-                        </span>
-                      )}
-                    </div>
-                    {date && <span className="steps__date">{formatDateTime(date)}</span>}
-                  </li>
-                );
-              })}
-            </ol>
+            <OrderProgress
+              placedAt={order.placedAt}
+              paidAt={order.paidAt}
+              shippedAt={order.shippedAt}
+              deliveredAt={deliveredAt}
+              status={order.status}
+            />
           </div>
 
           <div className="card">
@@ -271,11 +198,7 @@ export default async function OrderDetailPage({
                 <p className="line__meta">Aucun règlement enregistré pour cette commande.</p>
               ) : (
                 order.payments.map((p, idx) => {
-                  const meta = PAYMENT_STATUS_META[p.status] ?? {
-                    label: p.status,
-                    className: "badge badge-neutral",
-                    symbol: "•",
-                  };
+                  const meta = PAYMENT_STATUS_META[p.status];
                   return (
                     <div key={idx} className="summary__row">
                       <span className="summary__label">

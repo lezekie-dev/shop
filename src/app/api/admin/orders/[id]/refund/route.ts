@@ -1,9 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireAdminApi } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { selectPaymentProvider } from "@/domain/payment/registry";
 import { PaymentError, refundOrder } from "@/server/payments";
+import { requireApiCapability } from "@/server/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +22,17 @@ export const dynamic = "force-dynamic";
  * Idempotent : rembourser une commande déjà REFUNDED renvoie 200 sans écriture.
  *
  * Body optionnel : { amountCents?: number, reason?: string }
+ *
+ * Capacité `orders:refund` : un remboursement est un impact financier, donc
+ * ADMIN (CONVENTIONS §13). STAFF reçoit 403.
  */
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
-  const admin = await requireAdminApi(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Authentification admin requise" }, { status: 401 });
-  }
+  const access = await requireApiCapability(req, "orders:refund");
+  if (!access.ok) return access.response;
+  const admin = access.user;
 
   // Body optionnel : un remboursement total se déclenche sans payload.
   let body: { amountCents?: unknown; reason?: unknown } = {};

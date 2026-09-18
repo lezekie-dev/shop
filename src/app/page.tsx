@@ -220,7 +220,7 @@ export default async function HomePage() {
                 const p = c.products[0];
                 return (
                   <li key={c.id} className="category-card">
-                    <Link href={`/products?category=${c.slug}`} className="category-card__link">
+                    <Link href={`/categorie/${c.slug}`} className="category-card__link">
                       <div className="category-card__media">
                         <ProductVisual
                           url={cover?.url ?? null}

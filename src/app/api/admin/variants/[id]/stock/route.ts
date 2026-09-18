@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 
-import { requireAdminApi } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { requireApiCapability } from "@/server/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,10 @@ export const dynamic = "force-dynamic";
  * plutôt que de laisser la base dans un état incohérent.
  *
  * Chaque écriture produit une ligne d'AuditLog (avant/après).
+ *
+ * Capacité `products:write` : le stock est une propriété du catalogue, réservé
+ * à ADMIN (CONVENTIONS §13). Un STAFF reçoit 403 — la vérification est ici,
+ * côté handler, parce que le middleware Edge ne peut pas valider la session.
  */
 
 const MAX_UNITS = 1_000_000;
@@ -32,10 +36,9 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
-  const admin = await requireAdminApi(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Authentification admin requise" }, { status: 401 });
-  }
+  const access = await requireApiCapability(req, "products:write");
+  if (!access.ok) return access.response;
+  const admin = access.user;
 
   let payload: unknown;
   try {

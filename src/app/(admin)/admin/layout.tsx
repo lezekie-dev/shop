@@ -1,26 +1,37 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { getCurrentUser } from "@/lib/auth";
-import { AdminNav } from "@/ui/components/admin/admin-nav";
+import { roleLabel } from "@/domain/access";
+import { findStaffUser } from "@/server/guards";
+import { AdminNav, visibleNavItems } from "@/ui/components/admin/admin-nav";
 import { LogoutButton } from "@/ui/components/admin/logout-button";
 
 import "@/ui/styles/admin.css";
 
 /**
- * Coquille du back-office : en-tête (boutique + admin connecté + déconnexion),
- * navigation latérale sur desktop / barre scrollable sur mobile, contenu à droite.
+ * Coquille du back-office : en-tête (boutique + admin connecté + rôle +
+ * déconnexion), navigation latérale sur desktop / barre scrollable sur mobile,
+ * contenu à droite.
  *
  * Ce layout ne redirige PAS : `/admin/login` vit sous le même segment et doit
- * rester accessible. L'authentification est exigée par chaque page via
- * `requireAdmin()`, et le middleware couvre les navigations `/admin/*`.
- * Sans session, on rend simplement une coquille nue (cas de /admin/login).
+ * rester accessible. L'authentification est exigée par chaque page via une
+ * garde (`requireStaff` / `requireCapability`), et le middleware couvre les
+ * navigations `/admin/*`. Sans session (ou compte désactivé), on rend
+ * simplement une coquille nue (cas de /admin/login).
+ *
+ * L'utilisateur est lu via `findStaffUser()` et non `getCurrentUser()` : la
+ * garde revérifie `active` en base, donc un compte désactivé perd son en-tête,
+ * son menu et ses liens dès la requête suivante — pas à l'expiration du cookie.
+ *
+ * Le menu est calculé ici (côté serveur) à partir du rôle : un STAFF ne reçoit
+ * même pas dans son HTML les liens Produits/Stock/Utilisateurs. Ce n'est qu'un
+ * confort — l'autorisation réelle est revérifiée par les gardes de chaque page
+ * et de chaque API.
  */
-
 const SHOP_NAME = process.env.SHOP_NAME ?? "Shop";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await getCurrentUser();
+  const user = await findStaffUser();
 
   if (!user) {
     return <div className="admin-shell">{children}</div>;
@@ -45,6 +56,18 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <span className="admin-header__identity">
               <span className="sr-only">Connecté en tant que </span>
               <span className="admin-header__email">{user.email}</span>
+              {/* Le rôle est affiché : un opérateur doit comprendre pourquoi des
+                  entrées de menu lui manquent, sans aller lire la doc. */}
+              <span
+                className="badge badge-neutral"
+                title={
+                  user.role === "STAFF"
+                    ? "Accès opérateur : commandes et expéditions, sans catalogue ni gestion des utilisateurs"
+                    : "Accès complet, y compris catalogue, utilisateurs et paramètres"
+                }
+              >
+                {roleLabel(user.role)}
+              </span>
             </span>
             <LogoutButton />
           </div>
@@ -52,7 +75,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       </header>
 
       <div className="admin-layout">
-        <AdminNav />
+        <AdminNav items={visibleNavItems(user.role)} />
         <div className="admin-main">{children}</div>
       </div>
     </div>

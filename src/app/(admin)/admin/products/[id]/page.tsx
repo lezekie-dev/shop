@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireCapability } from "@/server/guards";
 import {
   getAdminProductDetail,
   listCategoryOptions,
@@ -27,7 +27,8 @@ export default async function AdminProductDetailPage({
 }: {
   params: { id: string };
 }) {
-  await requireAdmin();
+  // Fiche produit : catalogue, donc ADMIN seul (`products:read`).
+  await requireCapability("products:read");
 
   const [product, categories] = await Promise.all([
     getAdminProductDetail(params.id),

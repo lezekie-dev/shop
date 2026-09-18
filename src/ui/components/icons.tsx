@@ -156,6 +156,40 @@ export function IconEmails(props: IconProps) {
   );
 }
 
+/** Utilisateurs — deux bustes : comptes internes du back-office. */
+export function IconUsers(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="9.5" cy="8" r="3.25" />
+      <path d="M3.5 19.5c0-3.1 2.7-5.2 6-5.2s6 2.1 6 5.2" />
+      <path d="M16.2 5.4a3.25 3.25 0 0 1 0 5.2" />
+      <path d="M17.6 14.6c1.9.6 2.9 2.3 2.9 4.9" />
+    </svg>
+  );
+}
+
+/** Bouclier — sécurité du compte, double authentification. */
+export function IconShield(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M12 3.2 5 6.2v5.6c0 4 3 7.4 7 9 4-1.6 7-5 7-9V6.2z" />
+      <path d="m9.2 12.1 2.1 2.1 3.6-3.9" />
+    </svg>
+  );
+}
+
+/** Clé — code de secours, secret d'enrôlement. */
+export function IconKey(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="8" cy="12" r="3.5" />
+      <path d="M11.5 12h9" />
+      <path d="M18 12v3" />
+      <path d="M15.2 12v2.2" />
+    </svg>
+  );
+}
+
 /* ── Icônes d'état vide ──
    Un état vide (panier vide, aucune commande, recherche sans résultat) portait
    un emoji. Ces écrans sont vus par le marchand autant que par le client :

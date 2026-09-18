@@ -17,30 +17,45 @@ export const prismaTest = new PrismaClient({
   log: ["error"],
 });
 
-const TABLES = [
-  "EmailOutbox",
-  "OrderItem",
-  "Payment",
-  "Shipment",
-  "WebhookEvent",
-  "Order",
-  "CartItem",
-  "Cart",
-  "Address",
-  "Customer",
-  "Stock",
-  "Variant",
-  "Product",
-  "Category",
-  "AuditLog",
-  "Session",
-  "User",
-];
-
+/**
+ * Vide TOUTES les tables du schéma `public`, en une seule instruction.
+ *
+ * ── Pourquoi la liste est découverte à l'exécution ──────────────────
+ * La version précédente énumérait 17 tables à la main. Le schéma en compte 29
+ * depuis les chantiers V1 (Review, PromoCode, Wishlist, JobRun…). Une liste
+ * manuelle devient silencieusement fausse à chaque migration : les tables
+ * oubliées ne sont jamais vidées, et un test hérite des données du précédent.
+ * La panne est d'autant plus vicieuse qu'elle est intermittente et dépend de
+ * l'ordre d'exécution des fichiers.
+ *
+ * ── Pourquoi UNE instruction et non une par table ───────────────────
+ * `TRUNCATE` prend un verrou `AccessExclusiveLock` par table. En lançant 29
+ * TRUNCATE séparés dans une même transaction (l'ancienne écriture :
+ * `$transaction(TABLES.map(t => $executeRawUnsafe(...)))`), les verrous
+ * s'attendent mutuellement : Postgres sérialise, et un test qui faisait 6
+ * passes de nettoyage dépassait le délai de 30 s — jusqu'à faire tomber un
+ * agent d'implémentation resté bloqué 30 minutes dessus. Une seule instruction
+ * groupée ne prend qu'un verrou par table, dans un ordre unique et
+ * déterministe.
+ *
+ * `RESTART IDENTITY` est inutile ici : toutes les clés primaires du projet
+ * sont des `cuid()` générés par Prisma, il n'existe aucune séquence à
+ * réinitialiser (vérifié : `pg_sequences` est vide). Le conserver ne coûte
+ * que des verrous supplémentaires.
+ *
+ * Mesure : 29 tables vidées en ~1,5 s contre ~5 s avec 29 TRUNCATE parallèles.
+ */
 export async function resetDb(): Promise<void> {
-  await prismaTest.$transaction(
-    TABLES.map((t) => prismaTest.$executeRawUnsafe(`TRUNCATE "${t}" RESTART IDENTITY CASCADE`)),
+  const rows = await prismaTest.$queryRawUnsafe<Array<{ tablename: string }>>(
+    `SELECT tablename FROM pg_tables WHERE schemaname = 'public'`,
   );
+  if (rows.length === 0) return;
+
+  // Les noms viennent du catalogue système de Postgres, pas d'une entrée
+  // utilisateur : l'interpolation est sûre. Les guillemets protègent les
+  // identifiants sensibles à la casse (`OrderItem`, `EmailOutbox`).
+  const list = rows.map((r) => `"${r.tablename}"`).join(", ");
+  await prismaTest.$executeRawUnsafe(`TRUNCATE ${list} CASCADE`);
 }
 
 /**

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { requireAdmin } from "@/lib/auth";
+import { requireCapability } from "@/server/guards";
 import { listAdminProducts } from "@/server/admin-products";
 import { DataTable, RowChevron } from "@/ui/components/admin/data-table";
 import { Money } from "@/ui/components/money";
@@ -15,7 +15,8 @@ export const dynamic = "force-dynamic";
  * disponibilité réelle. L'édition se fait sur la fiche produit.
  */
 export default async function AdminProductsPage() {
-  await requireAdmin();
+  // Catalogue : `products:read` est réservé à ADMIN (CONVENTIONS §13).
+  await requireCapability("products:read");
   const products = await listAdminProducts();
 
   const activeCount = products.filter((product) => product.active).length;

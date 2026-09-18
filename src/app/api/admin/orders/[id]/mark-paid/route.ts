@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { requireAdminApi } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { PaymentError, applyPaymentOutcome } from "@/server/payments";
+import { requireApiCapability } from "@/server/guards";
 
 export const dynamic = "force-dynamic";
 
@@ -18,15 +18,17 @@ export const dynamic = "force-dynamic";
  * stock (via `applyPaymentOutcome`), + une ligne d'AuditLog.
  *
  * Protégé par la session admin (même vérification que `requireAdmin`).
+ *
+ * Capacité `orders:transition:paid` : confirmer un encaissement engage de
+ * l'argent réel, donc ADMIN (CONVENTIONS §13). STAFF reçoit 403.
  */
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } },
 ): Promise<NextResponse> {
-  const admin = await requireAdminApi(req);
-  if (!admin) {
-    return NextResponse.json({ error: "Authentification admin requise" }, { status: 401 });
-  }
+  const access = await requireApiCapability(req, "orders:transition:paid");
+  if (!access.ok) return access.response;
+  const admin = access.user;
 
   const order = await prisma.order.findUnique({
     where: { id: params.id },

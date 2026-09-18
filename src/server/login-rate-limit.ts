@@ -17,6 +17,13 @@ import { prisma } from "@/lib/db";
  * Le stockage est EN BASE, pas en mémoire : Next.js peut servir la route
  * depuis plusieurs workers, donc un compteur en RAM se contourne en tombant
  * sur un autre worker au fil des essais.
+ *
+ * PORTÉE (`scope`) : le back-office et l'espace client partagent la même table
+ * mais PAS le même compteur. Sans ce cloisonnement, un attaquant qui sature le
+ * quota d'un email côté client bloquerait la connexion admin du même
+ * identifiant (et inversement) : un déni de service gratuit offert par le
+ * mécanisme censé protéger. `scope` vaut "admin" par défaut, ce qui préserve
+ * exactement le comportement historique du back-office.
  */
 
 /** Fenêtre glissante d'observation. */
@@ -26,6 +33,11 @@ const MAX_FAILURES_PER_IDENTIFIER = 5;
 /** Échecs tolérés par IP dans la fenêtre (plus large : un bureau partage une IP). */
 const MAX_FAILURES_PER_IP = 20;
 
+/** Portée par défaut : le back-office (comportement historique inchangé). */
+export const ADMIN_RATE_LIMIT_SCOPE = "admin";
+/** Portée de l'espace client — seuils comptés séparément de l'admin. */
+export const CUSTOMER_RATE_LIMIT_SCOPE = "customer";
+
 export type RateLimitVerdict =
   | { allowed: true }
   | { allowed: false; retryAfterSeconds: number; scope: "identifier" | "ip" };
@@ -33,21 +45,26 @@ export type RateLimitVerdict =
 /**
  * Vérifie si une tentative est autorisée. À appeler AVANT de vérifier le mot
  * de passe, et à enregistrer ensuite quel que soit le résultat.
+ *
+ * `scope` isole les compteurs par espace (`admin` / `customer`) : les deux
+ * partagent la table `LoginAttempt` mais jamais un quota.
  */
 export async function checkLoginRateLimit(params: {
   identifier: string;
   ip: string | null;
+  scope?: string;
 }): Promise<RateLimitVerdict> {
   const identifier = params.identifier.trim().toLowerCase();
+  const scope = params.scope ?? ADMIN_RATE_LIMIT_SCOPE;
   const since = new Date(Date.now() - WINDOW_MS);
 
   const [byIdentifier, byIp] = await Promise.all([
     prisma.loginAttempt.count({
-      where: { identifier, succeeded: false, createdAt: { gte: since } },
+      where: { scope, identifier, succeeded: false, createdAt: { gte: since } },
     }),
     params.ip
       ? prisma.loginAttempt.count({
-          where: { ip: params.ip, succeeded: false, createdAt: { gte: since } },
+          where: { scope, ip: params.ip, succeeded: false, createdAt: { gte: since } },
         })
       : Promise.resolve(0),
   ]);
@@ -55,14 +72,14 @@ export async function checkLoginRateLimit(params: {
   if (byIdentifier >= MAX_FAILURES_PER_IDENTIFIER) {
     return {
       allowed: false,
-      retryAfterSeconds: await secondsUntilOldestExpires(identifier, "identifier"),
+      retryAfterSeconds: await secondsUntilOldestExpires(scope, identifier, "identifier"),
       scope: "identifier",
     };
   }
   if (byIp >= MAX_FAILURES_PER_IP) {
     return {
       allowed: false,
-      retryAfterSeconds: await secondsUntilOldestExpires(identifier, "ip", params.ip),
+      retryAfterSeconds: await secondsUntilOldestExpires(scope, identifier, "ip", params.ip),
       scope: "ip",
     };
   }
@@ -78,15 +95,16 @@ export async function checkLoginRateLimit(params: {
  * légitime, plus court laisserait l'attaquant insister pour rien.
  */
 async function secondsUntilOldestExpires(
+  scope: string,
   identifier: string,
-  scope: "identifier" | "ip",
+  by: "identifier" | "ip",
   ip?: string | null,
 ): Promise<number> {
   const since = new Date(Date.now() - WINDOW_MS);
   const where =
-    scope === "identifier"
-      ? { identifier, succeeded: false, createdAt: { gte: since } }
-      : { ip: ip ?? undefined, succeeded: false, createdAt: { gte: since } };
+    by === "identifier"
+      ? { scope, identifier, succeeded: false, createdAt: { gte: since } }
+      : { scope, ip: ip ?? undefined, succeeded: false, createdAt: { gte: since } };
 
   const oldest = await prisma.loginAttempt.findFirst({
     where,
@@ -99,23 +117,31 @@ async function secondsUntilOldestExpires(
   return Math.max(1, Math.ceil((unlocksAt - Date.now()) / 1000));
 }
 
-/** Enregistre une tentative. `succeeded: true` remet le compteur à zéro. */
+/**
+ * Enregistre une tentative. `succeeded: true` remet le compteur à zéro.
+ *
+ * La remise à zéro est elle aussi cloisonnée par `scope` : un client qui
+ * s'authentifie ne doit pas effacer les traces d'attaque sur le compte admin
+ * qui porte le même email.
+ */
 export async function recordLoginAttempt(params: {
   identifier: string;
   succeeded: boolean;
   ip: string | null;
+  scope?: string;
 }): Promise<void> {
   const identifier = params.identifier.trim().toLowerCase();
+  const scope = params.scope ?? ADMIN_RATE_LIMIT_SCOPE;
 
   if (params.succeeded) {
     // Une connexion réussie efface l'ardoise : l'utilisateur légitime qui s'est
     // trompé 4 fois ne doit pas rester à un essai du blocage pendant 15 min.
-    await prisma.loginAttempt.deleteMany({ where: { identifier, succeeded: false } });
+    await prisma.loginAttempt.deleteMany({ where: { scope, identifier, succeeded: false } });
     return;
   }
 
   await prisma.loginAttempt.create({
-    data: { identifier, succeeded: false, ip: params.ip },
+    data: { scope, identifier, succeeded: false, ip: params.ip },
   });
 }
 

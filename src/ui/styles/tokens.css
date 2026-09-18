@@ -401,6 +401,18 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 .filters__pill--active .filters__count {
   color: var(--accent);
 }
+/* Pastille de pagination INACTIVE (page précédente/suivante au bord extrême).
+   Elle garde sa forme et sa place pour que la rangée ne « saute » pas quand on
+   change de page, mais son contraste et son curseur disent qu'elle n'agit
+   pas — jamais la couleur seule (l'état est aussi porté par `aria-disabled`). */
+.filters__pill--disabled,
+.filters__pill--disabled:hover {
+  color: var(--text-disabled);
+  border-color: var(--border-soft);
+  background: var(--bg-raised);
+  cursor: not-allowed;
+  text-decoration: none;
+}
 
 /* ── Squelettes de chargement : forme du contenu réel, pas un spinner centré ── */
 
