@@ -12,20 +12,36 @@ datasource db {
 // ─────────────────────────────────────────────────────────────────────
 
 model User {
-  id           String     @id @default(cuid())
-  email        String     @unique
-  passwordHash String
-  role         Role       @default(ADMIN)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  sessions     Session[]
-  auditLogs    AuditLog[]
+  id               String     @id @default(cuid())
+  email            String     @unique
+  name             String?
+  passwordHash     String
+  role             Role       @default(ADMIN)
+  // Un compte désactivé ne peut plus se connecter, mais son historique
+  // d'audit reste attaché à lui : on ne supprime jamais un utilisateur,
+  // on le ferme.
+  active           Boolean    @default(true)
+  // 2FA TOTP. `totpSecret` n'est renseigné qu'une fois l'enrôlement
+  // commencé ; `totpEnabledAt` est la preuve que le premier code a été
+  // validé. Tant qu'il est nul, la 2FA n'est PAS active — sans cette
+  // distinction, un enrôlement abandonné laisserait le compte inaccessible.
+  totpSecret       String?
+  totpEnabledAt    DateTime?
+  lastLoginAt      DateTime?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+  sessions         Session[]
+  auditLogs        AuditLog[]
+  moderatedReviews Review[]   @relation("ReviewModerator")
 
   @@index([email])
 }
 
 enum Role {
   ADMIN
+  /// Accès limité : commandes et préparation, pas de gestion d'utilisateurs
+  /// ni de paramètres de la boutique.
+  STAFF
 }
 
 model Session {
@@ -52,44 +68,75 @@ model Session {
 model LoginAttempt {
   id         String   @id @default(cuid())
   identifier String
+  /// `admin` ou `customer` : les deux espaces ont leurs propres seuils, un
+  /// attaquant ne doit pas pouvoir consommer le quota de l'autre.
+  scope      String   @default("admin")
   succeeded  Boolean
   ip         String?
   createdAt  DateTime @default(now())
 
-  @@index([identifier, createdAt])
+  @@index([scope, identifier, createdAt])
   @@index([createdAt])
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Clients finaux (guest + identifiés)
+// Clients finaux (guest + comptes)
 // ─────────────────────────────────────────────────────────────────────
 
 model Customer {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  firstName String?
-  lastName  String?
-  phone     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  addresses Address[]
-  carts     Cart[]
-  orders    Order[]
+  id              String            @id @default(cuid())
+  email           String            @unique
+  /// Nul pour un client venu en invité : la ligne est créée au moment de la
+  /// commande, sans mot de passe. Un compte peut être « réclamé » plus tard
+  /// (définir un mot de passe) sans perdre l'historique de commandes.
+  passwordHash    String?
+  firstName       String?
+  lastName        String?
+  phone           String?
+  emailVerifiedAt DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  addresses       Address[]
+  carts           Cart[]
+  orders          Order[]
+  sessions        CustomerSession[]
+  reviews         Review[]
+  wishlists       Wishlist[]
+  redemptions     PromoRedemption[]
 
   @@index([email])
 }
 
-model Address {
+/// Session client — même principe que `Session` pour l'admin, mais table
+/// distincte : un cookie client ne doit jamais pouvoir ouvrir le back-office,
+/// même si les jetons venaient à être confondus par erreur.
+model CustomerSession {
   id         String   @id @default(cuid())
   customerId String
-  line1      String
-  line2      String?
-  city       String
-  postalCode String
-  country    String   @default("FR")
-  isDefault  Boolean  @default(false)
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
   customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  orders     Order[]
+
+  @@index([customerId])
+  @@index([expiresAt])
+}
+
+model Address {
+  id            String   @id @default(cuid())
+  customerId    String
+  label         String?
+  line1         String
+  line2         String?
+  city          String
+  postalCode    String
+  country       String   @default("FR")
+  phone         String?
+  isDefault     Boolean  @default(false)
+  customer      Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  orders        Order[]  @relation("OrderShipping")
+  billingOrders Order[]  @relation("OrderBilling")
 
   @@index([customerId])
 }
@@ -102,24 +149,30 @@ model Category {
   id       String    @id @default(cuid())
   slug     String    @unique
   name     String
+  /// Ordre d'affichage manuel : l'ordre alphabétique est rarement l'ordre
+  /// commercial voulu.
+  position Int       @default(0)
   products Product[]
 }
 
 model Product {
-  id          String         @id @default(cuid())
-  slug        String         @unique
-  name        String
-  description String         @db.Text
-  categoryId  String
-  active      Boolean        @default(true)
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
-  category    Category       @relation(fields: [categoryId], references: [id])
-  variants    Variant[]
-  images      ProductImage[]
+  id            String         @id @default(cuid())
+  slug          String         @unique
+  name          String
+  description   String         @db.Text
+  categoryId    String
+  active        Boolean        @default(true)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  category      Category       @relation(fields: [categoryId], references: [id])
+  variants      Variant[]
+  images        ProductImage[]
+  reviews       Review[]
+  wishlistItems WishlistItem[]
 
   @@index([categoryId])
   @@index([active])
+  @@index([name])
 }
 
 /// Visuel d'un produit.
@@ -140,6 +193,10 @@ model ProductImage {
   position  Int      @default(0)
   width     Int?
   height    Int?
+  /// Renseignés pour les fichiers téléversés (sert au quota de stockage et à
+  /// l'en-tête Content-Type servi). Nuls pour un visuel référencé par URL.
+  mimeType  String?
+  sizeBytes Int?
   createdAt DateTime @default(now())
   product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
@@ -148,20 +205,40 @@ model ProductImage {
 }
 
 model Variant {
-  id          String     @id @default(cuid())
+  id          String         @id @default(cuid())
   productId   String
-  sku         String     @unique
+  sku         String         @unique
   name        String
+  /// Prix en devise de RÉFÉRENCE (EUR), en centimes. Les autres devises sont
+  /// soit fixées explicitement dans `VariantPrice`, soit converties à
+  /// l'affichage via `ExchangeRate`.
   priceCents  Int
   attributes  Json
   weightGrams Int?
-  active      Boolean    @default(true)
-  product     Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  active      Boolean        @default(true)
+  product     Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   stock       Stock?
   cartItems   CartItem[]
   orderItems  OrderItem[]
+  prices      VariantPrice[]
 
   @@index([productId])
+}
+
+/// Prix explicite d'une variante dans une devise donnée.
+///
+/// Pourquoi ne pas toujours convertir : un marchand camerounais vend souvent à
+/// un prix rond local (29 000 XAF) qui ne correspond pas à la conversion du
+/// prix EUR. Un prix posé à la main prime donc sur la conversion.
+model VariantPrice {
+  id         String  @id @default(cuid())
+  variantId  String
+  currency   String
+  priceCents Int
+  variant    Variant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+
+  @@unique([variantId, currency])
+  @@index([variantId])
 }
 
 model Stock {
@@ -184,15 +261,20 @@ enum CartStatus {
 }
 
 model Cart {
-  id         String     @id @default(cuid())
-  customerId String?
-  sessionKey String?    @unique
-  status     CartStatus @default(ACTIVE)
-  currency   String     @default("EUR")
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  customer   Customer?  @relation(fields: [customerId], references: [id])
-  items      CartItem[]
+  id            String     @id @default(cuid())
+  customerId    String?
+  sessionKey    String?    @unique
+  status        CartStatus @default(ACTIVE)
+  currency      String     @default("EUR")
+  /// Code promo saisi, gardé tel quel : le calcul est refait à chaque
+  /// affichage et à la commande, donc un code devenu invalide ne peut pas
+  /// rester appliqué parce qu'il était en cache.
+  promoCode     String?
+  discountCents Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  customer      Customer?  @relation(fields: [customerId], references: [id])
+  items         CartItem[]
 
   @@index([customerId])
   @@index([status])
@@ -222,31 +304,39 @@ enum OrderStatus {
 }
 
 model Order {
-  id              String      @id @default(cuid())
-  number          String      @unique
+  id               String           @id @default(cuid())
+  number           String           @unique
   // Jeton d'accès : le client consulte SA commande via ce secret, jamais via
   // l'id technique. 32 octets aléatoires, non devinable, révocable en le
   // régénérant. Permet à un invité (sans compte) de suivre sa commande sans
   // exposer les coordonnées au premier venu qui devine un cuid.
-  accessToken     String      @unique
-  customerId      String
-  addressId       String
-  status          OrderStatus @default(PENDING_PAYMENT)
-  subtotalCents   Int
-  shippingCents   Int
-  totalCents      Int
-  currency        String      @default("EUR")
-  paymentProvider String
-  paymentRef      String?
-  placedAt        DateTime    @default(now())
-  paidAt          DateTime?
-  shippedAt       DateTime?
-  cancelledAt     DateTime?
-  customer        Customer    @relation(fields: [customerId], references: [id])
-  address         Address     @relation(fields: [addressId], references: [id])
-  items           OrderItem[]
-  payments        Payment[]
-  shipments       Shipment[]
+  accessToken      String           @unique
+  customerId       String
+  addressId        String
+  /// Adresse de facturation distincte de la livraison (cas diaspora : on paie
+  /// depuis l'étranger et on fait livrer au pays). Nulle = identique.
+  billingAddressId String?
+  status           OrderStatus      @default(PENDING_PAYMENT)
+  subtotalCents    Int
+  discountCents    Int              @default(0)
+  shippingCents    Int
+  totalCents       Int
+  currency         String           @default("EUR")
+  paymentProvider  String
+  paymentRef       String?
+  customerNote     String?          @db.Text
+  placedAt         DateTime         @default(now())
+  paidAt           DateTime?
+  shippedAt        DateTime?
+  cancelledAt      DateTime?
+  customer         Customer         @relation(fields: [customerId], references: [id])
+  address          Address          @relation("OrderShipping", fields: [addressId], references: [id])
+  billingAddress   Address?         @relation("OrderBilling", fields: [billingAddressId], references: [id])
+  items            OrderItem[]
+  payments         Payment[]
+  shipments        Shipment[]
+  redemption       PromoRedemption?
+  reviews          Review[]
 
   @@index([customerId])
   @@index([status])
@@ -268,6 +358,122 @@ model OrderItem {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Promotions
+// ─────────────────────────────────────────────────────────────────────
+
+enum PromoKind {
+  /// Remise en points de pourcentage (10 = 10 %).
+  PERCENT
+  /// Remise en centimes, plafonnée au sous-total.
+  FIXED
+}
+
+model PromoCode {
+  id               String            @id @default(cuid())
+  /// Toujours stocké en MAJUSCULES : « BIENVENUE » et « bienvenue » sont le
+  /// même code, sinon on se retrouve avec des doublons invisibles.
+  code             String            @unique
+  kind             PromoKind
+  value            Int
+  minSubtotalCents Int               @default(0)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  maxRedemptions   Int?
+  /// Nombre d'utilisations autorisées par client. Nul = illimité.
+  maxPerCustomer   Int?
+  active           Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  redemptions      PromoRedemption[]
+
+  @@index([code])
+}
+
+model PromoRedemption {
+  id          String    @id @default(cuid())
+  promoCodeId String
+  /// Unicité sur `orderId` : une commande ne peut consommer un code qu'une
+  /// fois, même si le checkout est rejoué.
+  orderId     String    @unique
+  customerId  String?
+  amountCents Int
+  createdAt   DateTime  @default(now())
+  promoCode   PromoCode @relation(fields: [promoCodeId], references: [id], onDelete: Cascade)
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  customer    Customer? @relation(fields: [customerId], references: [id])
+
+  @@index([promoCodeId])
+  @@index([customerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Avis clients (modérés)
+// ─────────────────────────────────────────────────────────────────────
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+/// Avis publié uniquement après modération.
+///
+/// Un avis non modéré est un risque réputationnel : injures, liens, faux avis
+/// d'un concurrent. Le statut par défaut est donc PENDING, et rien n'est
+/// affiché publiquement avant APPROVED.
+model Review {
+  id            String       @id @default(cuid())
+  productId     String
+  customerId    String?
+  orderId       String?
+  authorName    String
+  rating        Int
+  title         String?
+  body          String       @db.Text
+  status        ReviewStatus @default(PENDING)
+  /// Preuve d'achat : un avis rattaché à une commande livrée est signalé comme
+  /// vérifié côté client.
+  moderatedById String?
+  moderatedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  product       Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  customer      Customer?    @relation(fields: [customerId], references: [id])
+  order         Order?       @relation(fields: [orderId], references: [id])
+  moderatedBy   User?        @relation("ReviewModerator", fields: [moderatedById], references: [id])
+
+  @@unique([productId, customerId])
+  @@index([productId, status])
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Favoris
+// ─────────────────────────────────────────────────────────────────────
+
+model Wishlist {
+  id         String         @id @default(cuid())
+  customerId String?
+  sessionKey String?        @unique
+  createdAt  DateTime       @default(now())
+  customer   Customer?      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  items      WishlistItem[]
+
+  @@index([customerId])
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlistId String
+  productId  String
+  createdAt  DateTime @default(now())
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([wishlistId, productId])
+  @@index([wishlistId])
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Paiements & logistique
 // ─────────────────────────────────────────────────────────────────────
 
@@ -279,20 +485,27 @@ enum PaymentStatus {
 }
 
 model Payment {
-  id          String        @id @default(cuid())
-  orderId     String
-  provider    String
-  providerRef String
-  amountCents Int
-  currency    String
-  status      PaymentStatus
-  rawPayload  Json?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id                String        @id @default(cuid())
+  orderId           String
+  provider          String
+  providerRef       String
+  amountCents       Int
+  currency          String
+  status            PaymentStatus
+  rawPayload        Json?
+  /// Suivi de réconciliation : combien de fois on a interrogé le provider pour
+  /// savoir où en est ce paiement, et quand le refaire. Sans ces deux champs,
+  /// un paiement bloqué en PENDING reste bloqué pour toujours.
+  reconcileAttempts Int           @default(0)
+  lastCheckedAt     DateTime?
+  nextReconcileAt   DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  order             Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerRef])
   @@index([orderId])
+  @@index([status, nextReconcileAt])
 }
 
 enum ShipmentStatus {
@@ -307,6 +520,7 @@ model Shipment {
   orderId     String
   carrier     String?
   trackingNo  String?
+  trackingUrl String?
   status      ShipmentStatus @default(PENDING)
   shippedAt   DateTime?
   deliveredAt DateTime?
@@ -316,7 +530,27 @@ model Shipment {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// Webhooks idempotents + audit
+// Devises
+// ─────────────────────────────────────────────────────────────────────
+
+/// Taux de change de référence.
+///
+/// `rate` est un Decimal et non un Float : un Float binaire introduit des
+/// erreurs d'arrondi, et sur des montants d'argent l'erreur finit par se voir
+/// dans un total client.
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  base      String
+  quote     String
+  rate      Decimal  @db.Decimal(18, 8)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([base, quote])
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Webhooks idempotents + audit + exploitation
 // ─────────────────────────────────────────────────────────────────────
 
 model WebhookEvent {
@@ -347,6 +581,28 @@ model AuditLog {
   @@index([createdAt])
 }
 
+enum JobStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+/// Trace d'exécution des tâches planifiées (réconciliation des paiements,
+/// purge des paniers abandonnés…). Sans cette table, une tâche qui échoue
+/// chaque nuit échoue en silence : personne ne lit les logs d'un cron.
+model JobRun {
+  id         String    @id @default(cuid())
+  name       String
+  status     JobStatus @default(RUNNING)
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  error      String?   @db.Text
+  meta       Json?
+
+  @@index([name, startedAt])
+  @@index([status])
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Emails transactionnels (outbox en base — aucun SMTP requis)
 // ─────────────────────────────────────────────────────────────────────
@@ -356,15 +612,15 @@ model AuditLog {
 // consultable en base (et par l'admin). Brancher Resend/SMTP plus tard =
 // ajouter un second EmailSender qui écrit la même ligne puis l'envoie.
 model EmailOutbox {
-  id       String    @id @default(cuid())
+  id       String   @id @default(cuid())
   to       String
   subject  String
   bodyText String
   bodyHtml String?
   template String // "order_confirmation" | "order_shipped"
   orderId  String?
-  sentAt   DateTime  @default(now())
-  provider String    @default("outbox") // "outbox" aujourd'hui, "resend"/"smtp" demain
+  sentAt   DateTime @default(now())
+  provider String   @default("outbox") // "outbox" aujourd'hui, "resend"/"smtp" demain
 
   @@index([orderId])
   @@index([sentAt])

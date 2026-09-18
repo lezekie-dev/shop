@@ -2,13 +2,17 @@ import { cookies } from "next/headers";
 import type { NextRequest, NextResponse } from "next/server";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
+import type { Role } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 
 export type AdminUser = {
   id: string;
   email: string;
-  role: "ADMIN";
+  /// Rôle issu de l'enum Prisma et non figé à "ADMIN" : le back-office gère
+  /// désormais ADMIN et STAFF, et les gardes d'autorisation testent cette
+  /// valeur. Laisser le type à "ADMIN" interdirait toute vérification.
+  role: Role;
 };
 
 function cookieName(): string {
