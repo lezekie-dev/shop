@@ -35,10 +35,10 @@ Légende : ✅ terminé et vérifié · 🟡 à vérifier en QA · 🔵 en cours
 
 ---
 
-## 🟡 À vérifier en QA (vague 1 — code livré, validé par moi)
+## ✅ Vague 1 — livrée et vérifiée (362/362 vitest, tsc 0)
 
-> Code écrit par les équipes, `tsc` 0 erreur. **Il me reste à lancer les tests
-> et à vérifier les parcours en vrai avant de passer en ✅.**
+> Trois chantiers menés en parallèle par des équipes sur fichiers disjoints,
+> puis vérifiés et réparés par le Chief of Staff. Commit `8e37e1a`.
 
 ### Chantier A — Espace client
 
@@ -49,7 +49,7 @@ Légende : ✅ terminé et vérifié · 🟡 à vérifier en QA · 🔵 en cours
 | Mes commandes | `/compte/commandes` |
 | Détail commande + suivi d'expédition | `src/ui/components/order-progress.tsx` |
 | Carnet d'adresses | `src/ui/components/customer/address-book.tsx` |
-| ⚠️ **Réserve** : l'agent a échoué sur un test (`Order_customerId_fkey`) et a été coupé au bout de 30 min | à reprendre |
+| (résolu) l'agent était bloqué par la lenteur de `resetDb` — cause trouvée et corrigée | 33 s → 1,3 s par test |
 
 ### Chantier B — Recherche & catalogue
 
@@ -72,17 +72,27 @@ Légende : ✅ terminé et vérifié · 🟡 à vérifier en QA · 🔵 en cours
 
 ---
 
-## 🔵 Vague 2 — à lancer
+## 🔵 Vague 2 — cadrée par le PO (`docs/team/PO-BRIEF-V2.md`)
 
-| Carte | Chantier | Note |
-|---|---|---|
-| Codes promo (percent / fixe, limites d'usage) | E | Tables prêtes, logique à écrire |
-| Avis clients + modération | F | Modèle `Review` prêt |
-| Favoris / wishlist | G | Modèles prêts |
-| Téléversement d'images produits | H | Champs `mimeType`/`sizeBytes` prêts |
-| Réconciliation des paiements `PENDING` | I | Champs `nextReconcileAt` prêts |
-| Observabilité + sauvegardes | J | Modèle `JobRun` prêt |
-| Multi-devise EUR/XAF | K | `VariantPrice` + `ExchangeRate` prêts |
+Le PO a priorisé, écrit 67 critères d'acceptation, tranché ce qui sort du
+périmètre et listé 7 décisions à arbitrer. Séquencement en 4 lots.
+
+| Lot | Carte | Valeur | Décision du PO |
+|---|---|---|---|
+| 2A | Réconciliation des paiements `PENDING` (I) | 5 | IN — en premier, c'est un filet de sécurité |
+| 2A | Observabilité + sauvegardes (J) | 4 | IN — un chantier qui protège l'argent passe avant ceux qui le font circuler |
+| 2B | Codes promo (E) | 4 | IN réduit — 1 code/commande, pas de cumul, pas de ciblage |
+| 2B | Avis clients modérés (F) | 4 | IN réduit — rattachés à une commande, modération obligatoire |
+| 2C | Téléversement d'images produits (H) | 5 | IN — le plus gros frein opérationnel pour Fatou |
+| 2D | Multi-devise EUR/XAF (K) | 4 | IN réduit, **sacrifiable** si 2A–2C dérapent |
+| — | Favoris / wishlist (G) | 2 | **OUT** → vague 3 : le panier est déjà persistant, et sans canal de relance un favori n'est qu'un signet |
+
+**Conditions d'entrée du PO — les 3 satisfaites le 18/09 :**
+1. ✅ Vague 1 verte sur preuve (362/362) — la carte que le PO refusait de laisser en 🟡 est close.
+2. ✅ Rate limiting **vérifié en production** : 401 ×5 puis 429. `KNOWN-ISSUES.md` affirmait le contraire, il était périmé — corrigé.
+3. ✅ Boutique en ligne et répondante (accueil, catalogue, recherche → 200).
+
+**7 décisions à arbitrer par le propriétaire** (§7 du brief PO) : cumul de codes, post-modération des avis, libération d'un code après remboursement, CA multi-devises, saisie manuelle des prix XAF, sort d'un paiement bloqué, stockage des photos. Sans réponse, l'avis du PO s'applique par défaut et reste inscrit comme « à confirmer ».
 
 ---
 
