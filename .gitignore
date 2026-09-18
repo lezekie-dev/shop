@@ -21,12 +21,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# local env files
+# fichiers d'environnement — un seul cas fait exception : .env.example, qui ne
+# contient que des valeurs factices et sert de documentation.
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
