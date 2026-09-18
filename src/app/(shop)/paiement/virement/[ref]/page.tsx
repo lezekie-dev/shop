@@ -1,32 +1,16 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { bankTransferDetails } from "@/domain/payment/bank-transfer";
+import {
+  BANK_TRANSFER_VALIDITY_MS,
+  bankTransferBic,
+  bankTransferDetails,
+} from "@/domain/payment/bank-transfer";
+import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
-import { Money } from "@/ui/components/money";
+import { formatDate } from "@/ui/format";
 
 export const dynamic = "force-dynamic";
-
-const boxStyle: React.CSSProperties = {
-  border: "1px solid #e5e5e5",
-  borderRadius: 8,
-  background: "#fff",
-  padding: "1rem",
-};
-
-const labelStyle: React.CSSProperties = {
-  color: "#777",
-  fontSize: "0.8rem",
-  textTransform: "uppercase",
-  letterSpacing: "0.03em",
-  margin: 0,
-};
-
-const valueStyle: React.CSSProperties = {
-  margin: "0.15rem 0 0.75rem",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
-  fontSize: "1rem",
-};
 
 /**
  * Page d'instructions de virement bancaire — cible du `redirectUrl`
@@ -56,45 +40,105 @@ export default async function BankTransferInstructionsPage({
   }
 
   const details = bankTransferDetails();
+  const bic = bankTransferBic();
   const order = payment.order;
+  // Même échéance que celle posée par `createIntent` : une seule constante.
+  const expiresAt = new Date(payment.createdAt.getTime() + BANK_TRANSFER_VALIDITY_MS);
+  const expired = Date.now() > expiresAt.getTime();
+  const settled = order.status !== "PENDING_PAYMENT";
 
   return (
-    <section style={{ padding: "2rem 1rem", maxWidth: 640, margin: "0 auto", display: "grid", gap: "1.25rem" }}>
-      <header>
-        <h1 style={{ margin: 0 }}>Paiement par virement bancaire</h1>
-        <p style={{ margin: "0.35rem 0 0", color: "#666" }}>
-          Commande <strong>{order.number}</strong> —{" "}
-          <Money cents={payment.amountCents} currency={payment.currency} />
-        </p>
-      </header>
-
-      <div style={boxStyle}>
-        <p style={labelStyle}>Bénéficiaire</p>
-        <p style={valueStyle}>{details.holder}</p>
-
-        <p style={labelStyle}>Banque</p>
-        <p style={valueStyle}>{details.bankName}</p>
-
-        <p style={labelStyle}>IBAN</p>
-        <p style={valueStyle}>{details.iban}</p>
-
-        <p style={labelStyle}>Référence à indiquer dans le libellé</p>
-        <p style={{ ...valueStyle, marginBottom: 0 }}>{order.number}</p>
+    <div className="page page--slim enter enter-1">
+      <div className="page__head">
+        <div>
+          <p className="eyebrow">Virement bancaire</p>
+          <h1 className="page__title">Paiement par virement</h1>
+          <p className="page__sub">
+            Commande <span className="num">{order.number}</span> —{" "}
+            <span className="money">{formatMoneyEur(payment.amountCents)}</span>
+          </p>
+        </div>
       </div>
 
-      <div style={{ ...boxStyle, background: "#fffdf5", borderColor: "#f0e0b0" }}>
-        <p style={{ margin: 0, color: "#6b5a20" }}>
-          Votre commande est <strong>en attente de paiement</strong>. Elle sera validée dès
-          réception du virement sur le compte ci-dessus (validation manuelle par la boutique,
-          généralement sous 1 à 2 jours ouvrés).
+      {settled ? (
+        <div className="notice">
+          <p className="notice__title">Paiement enregistré</p>
+          <p>
+            Le virement a été rapproché : votre commande n&apos;est plus en attente de paiement.
+            Les coordonnées ci-dessous sont conservées à titre de justificatif.
+          </p>
+        </div>
+      ) : (
+        <div className="notice">
+          <p className="notice__title">Votre commande est réservée</p>
+          <p>
+            Elle sera validée à réception du virement sur le compte ci-dessous. Le rapprochement
+            est fait à la main par la boutique, généralement sous 1 à 2 jours ouvrés.
+          </p>
+        </div>
+      )}
+
+      <section className="card">
+        <h2 className="card__title">Coordonnées bancaires</h2>
+
+        <div className="instruction-row">
+          <span className="instruction-row__label">Bénéficiaire</span>
+          <span className="instruction-row__value">{details.holder}</span>
+        </div>
+        <div className="instruction-row">
+          <span className="instruction-row__label">Banque</span>
+          <span className="instruction-row__value">{details.bankName}</span>
+        </div>
+        <div className="instruction-row">
+          <span className="instruction-row__label">IBAN</span>
+          <span className="instruction-row__value num">{details.iban}</span>
+        </div>
+        <div className="instruction-row">
+          <span className="instruction-row__label">BIC</span>
+          <span className="instruction-row__value num">{bic}</span>
+        </div>
+        <div className="instruction-row">
+          <span className="instruction-row__label">Montant</span>
+          <span className="instruction-row__value num">
+            {formatMoneyEur(payment.amountCents)}
+          </span>
+        </div>
+        <div className="instruction-row">
+          <span className="instruction-row__label">Référence à indiquer</span>
+          <span className="instruction-row__value num">{order.number}</span>
+        </div>
+      </section>
+
+      <div className="notice">
+        <p className="notice__title">
+          {expired ? "Délai dépassé" : "La commande expire sans virement"}
+        </p>
+        <p>
+          {expired ? (
+            <>
+              Le délai de virement de cette commande est dépassé (échéance :{" "}
+              <span className="num">{formatDate(expiresAt)}</span>). Contactez la boutique pour
+              relancer la commande.
+            </>
+          ) : (
+            <>
+              Sans virement reçu avant le <span className="num">{formatDate(expiresAt)}</span>, la
+              commande est annulée et les articles sont remis en stock. Indiquez la référence{" "}
+              <span className="num">{order.number}</span> dans le libellé : c&apos;est ce qui permet
+              de rattacher votre virement à cette commande.
+            </>
+          )}
         </p>
       </div>
 
-      <p style={{ margin: 0 }}>
-        <Link href={`/orders/${order.id}`} style={{ color: "#111" }}>
-          Suivre ma commande
+      <div className="actions">
+        <Link href={`/orders/${order.id}`} className="btn btn-primary">
+          J&apos;ai effectué le virement
         </Link>
-      </p>
-    </section>
+        <Link href="/products" className="btn btn-secondary">
+          Continuer mes achats
+        </Link>
+      </div>
+    </div>
   );
 }

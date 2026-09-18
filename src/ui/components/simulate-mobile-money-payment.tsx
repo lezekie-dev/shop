@@ -8,6 +8,9 @@ import { useState } from "react";
  * enverrait à la boutique après validation du paiement par le client (push
  * USSD). En production, ce composant n'existe pas — c'est NotchPay/Flutterwave
  * qui appelle POST /api/payments/mobile-money/callback.
+ *
+ * Le bloc est explicitement étiqueté « Démonstration » (badge + texte) pour
+ * qu'aucun utilisateur ne le prenne pour un vrai bouton de paiement.
  */
 export function SimulateMobileMoneyPayment({
   providerRef,
@@ -50,31 +53,32 @@ export function SimulateMobileMoneyPayment({
   }
 
   return (
-    <div style={{ display: "grid", gap: "0.5rem" }}>
-      <button
-        type="button"
-        onClick={() => {
-          void confirmFromOperator();
-        }}
-        disabled={busy}
-        style={{
-          padding: "0.75rem 1rem",
-          background: busy ? "#666" : "#111",
-          color: "#fff",
-          border: 0,
-          borderRadius: 6,
-          fontWeight: 600,
-          cursor: busy ? "wait" : "pointer",
-        }}
-      >
-        {busy ? "Confirmation…" : "J'ai validé le paiement sur mon téléphone"}
-      </button>
-      <p style={{ margin: 0, color: "#777", fontSize: "0.85rem" }}>
-        Démonstration : ce bouton rejoue le callback que l&apos;opérateur enverrait à la
-        boutique. Aucun compte Mobile Money réel n&apos;est débité.
+    <div className="card form-grid">
+      <div className="actions actions--between">
+        <span className="badge badge-neutral">Démonstration</span>
+        <span className="note">Aucun compte Mobile Money réel n&apos;est débité.</span>
+      </div>
+
+      <p className="note">
+        Ce bouton rejoue la notification que l&apos;opérateur enverrait à la boutique après votre
+        validation. Il n&apos;existe pas en production.
       </p>
+
+      <div className="form-actions">
+        <button
+          type="button"
+          className="btn btn-secondary"
+          disabled={busy}
+          onClick={() => {
+            void confirmFromOperator();
+          }}
+        >
+          {busy ? "Confirmation…" : "J'ai validé le paiement sur mon téléphone"}
+        </button>
+      </div>
+
       {error && (
-        <p role="alert" style={{ margin: 0, color: "#b00020" }}>
+        <p role="alert" className="form-feedback form-feedback--error">
           {error}
         </p>
       )}

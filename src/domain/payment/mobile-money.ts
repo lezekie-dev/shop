@@ -51,6 +51,12 @@ import {
 
 const FIFTEEN_MIN_MS = 15 * 60 * 1000;
 
+/**
+ * Durée de vie d'une demande de paiement Mobile Money (durée réelle d'un push
+ * USSD). Exposée à la page d'instructions pour afficher l'heure d'expiration.
+ */
+export const MOBILE_MONEY_REQUEST_TTL_MS = FIFTEEN_MIN_MS;
+
 /** Base des pages d'instruction Mobile Money (cible du redirectUrl). */
 export const MOBILE_MONEY_INSTRUCTIONS_PATH = "/paiement/mobile-money";
 

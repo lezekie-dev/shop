@@ -39,6 +39,13 @@ import type {
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * Validité d'une demande de virement — exposée à la page d'instructions, qui
+ * doit pouvoir annoncer la même échéance que celle posée par `createIntent`.
+ * Une seule valeur, un seul endroit.
+ */
+export const BANK_TRANSFER_VALIDITY_MS = SEVEN_DAYS_MS;
+
 /** Base des pages d'instructions virement. */
 export const BANK_TRANSFER_INSTRUCTIONS_PATH = "/paiement/virement";
 
@@ -62,6 +69,20 @@ export function bankTransferDetails(): BankTransferDetails {
     holder: process.env.BANK_TRANSFER_HOLDER ?? BANK_TRANSFER_DEFAULTS.holder,
     bankName: process.env.BANK_TRANSFER_BANK_NAME ?? BANK_TRANSFER_DEFAULTS.bankName,
   };
+}
+
+/**
+ * BIC de la banque de la boutique — valeur de démonstration par défaut.
+ *
+ * Volontairement HORS de `bankTransferDetails()` : le contrat de cet objet
+ * (IBAN, titulaire, banque) est consommé tel quel par l'email de confirmation
+ * et par les tests. Le BIC est une information d'affichage en plus, il a sa
+ * propre lecture d'environnement.
+ */
+export const BANK_TRANSFER_DEFAULT_BIC = "DEMOFRPPXXX";
+
+export function bankTransferBic(): string {
+  return process.env.BANK_TRANSFER_BIC ?? BANK_TRANSFER_DEFAULT_BIC;
 }
 
 export class BankTransferPaymentProvider implements PaymentProvider {
