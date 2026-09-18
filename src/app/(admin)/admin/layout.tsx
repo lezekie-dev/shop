@@ -3,7 +3,8 @@ import Link from "next/link";
 
 import { roleLabel } from "@/domain/access";
 import { findStaffUser } from "@/server/guards";
-import { AdminNav, visibleNavItems } from "@/ui/components/admin/admin-nav";
+import { AdminNav } from "@/ui/components/admin/admin-nav";
+import { visibleNavItems } from "@/ui/components/admin/admin-nav-items";
 import { LogoutButton } from "@/ui/components/admin/logout-button";
 
 import "@/ui/styles/admin.css";

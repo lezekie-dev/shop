@@ -28,7 +28,7 @@ td.mono{font-family:ui-monospace,monospace;font-size:12px;color:#8a7264}
 tr:last-child td{border-bottom:0}
 </style></head><body>
 <h1>Kanban — Projet Shop</h1>
-<p class="sub">Mis à jour le 2026-09-18 · Chief of Staff · <strong>29 cartes</strong></p>
+<p class="sub">Mis à jour le 2026-09-18 · Chief of Staff · <strong>31 cartes</strong></p>
 <div class="rule">
   <b>Règle d'or :</b> une carte passe en « Terminé » uniquement sur <b>preuve d'exécution</b> — tests verts et contrôle réel en production pour une carte visible.
   Jamais parce que le code est écrit, jamais parce qu'un agent l'affirme.
@@ -49,7 +49,7 @@ tr:last-child td{border-bottom:0}
 <div class="board"><div class="col">
     <div class="col__head">
       <span class="col__label">Backlog</span>
-      <span class="col__count">6</span>
+      <span class="col__count">7</span>
     </div>
     <p class="col__hint">identifié, non planifié</p>
     
@@ -83,82 +83,32 @@ tr:last-child td{border-bottom:0}
       <span class="team">—</span></div>
     <p class="card__title">Rate limiting sur le checkout</p>
     <p class="card__proof">repéré par le PO</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#8a7264">—</span>
+      <span class="team">à lancer</span></div>
+    <p class="card__title">Vague 2 — lots 2B (codes promo, avis) puis 2D (multi-devise)</p>
+    <p class="card__proof">cadrée par le PO dans PO-BRIEF-V2.md</p>
   </div>
   </div><div class="col">
     <div class="col__head">
       <span class="col__label">En cours</span>
-      <span class="col__count">2</span>
+      <span class="col__count">0</span>
     </div>
     <p class="col__hint">équipe au travail</p>
     <p class="col__wip">max 3 chantiers en parallèle</p>
-    <div class="card">
-    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Restauration réellement testée (exigence PO)</p>
-    <p class="card__proof">test en cours sur base jetable</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#8a7264">—</span>
-      <span class="team">Chief of Staff</span></div>
-    <p class="card__title">Vérification finale de la suite complète</p>
-    <p class="card__proof">après retour des 3 équipes</p>
-  </div>
+    
   </div><div class="col">
     <div class="col__head">
       <span class="col__label">À vérifier</span>
-      <span class="col__count">9</span>
+      <span class="col__count">0</span>
     </div>
     <p class="col__hint">code livré, non contrôlé</p>
     <p class="col__wip">goulot : à vider avant la vague suivante</p>
-    <div class="card">
-    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Réconciliation des paiements bloqués</p>
-    <p class="card__proof">code livré — suite complète à relancer</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Route cron protégée par CRON_SECRET</p>
-    <p class="card__proof">code livré</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Page /admin/paiements</p>
-    <p class="card__proof">code livré</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">/api/health avec 503 si base morte</p>
-    <p class="card__proof">code livré</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Page /admin/taches (JobRun)</p>
-    <p class="card__proof">code livré</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Script de sauvegarde DB + rétention</p>
-    <p class="card__proof">code livré</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Téléversement d'images (contenu validé)</p>
-    <p class="card__proof">code livré</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Réordonnancement / suppression visuels</p>
-    <p class="card__proof">code livré</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
-      <span class="team">Frontend</span></div>
-    <p class="card__title">Interface admin de gestion des photos</p>
-    <p class="card__proof">code livré</p>
-  </div>
+    
   </div><div class="col">
     <div class="col__head">
       <span class="col__label">Terminé</span>
-      <span class="col__count">12</span>
+      <span class="col__count">24</span>
     </div>
     <p class="col__hint">vérifié sur preuve</p>
     
@@ -222,6 +172,66 @@ tr:last-child td{border-bottom:0}
       <span class="team">Chief of Staff</span></div>
     <p class="card__title">Cause racine du blocage d'agent (resetDb)</p>
     <p class="card__proof">33 s → 1,3 s par test</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Réconciliation des paiements bloqués</p>
+    <p class="card__proof">vérifié en production</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Route cron protégée par CRON_SECRET</p>
+    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Page /admin/paiements</p>
+    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">/api/health avec 503 si base morte</p>
+    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Page /admin/taches (JobRun)</p>
+    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Script de sauvegarde DB + rétention</p>
+    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Téléversement d'images (contenu validé)</p>
+    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Réordonnancement / suppression visuels</p>
+    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
+      <span class="team">Frontend</span></div>
+    <p class="card__title">Interface admin de gestion des photos</p>
+    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Restauration réellement testée (exigence PO)</p>
+    <p class="card__proof">testée : 19 commandes → 19 restaurées, limite documentée</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#8a7264">—</span>
+      <span class="team">Chief of Staff</span></div>
+    <p class="card__title">Vérification finale de la suite complète</p>
+    <p class="card__proof">531/531 vitest, tsc 0, back-office 9/9 en prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#8a7264">BUG</span>
+      <span class="team">Chief of Staff</span></div>
+    <p class="card__title">Back-office entier en 500 (frontière serveur/client)</p>
+    <p class="card__proof">9/9 pages admin rétablies — non détecté par les tests, vu en prod</p>
   </div>
   </div></div>
 <h2>Décisions en attente du propriétaire</h2>

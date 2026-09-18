@@ -363,8 +363,12 @@ describe("téléversement d'une photo", () => {
 
   it("un nom de fichier client contenant ../ n'écrit RIEN hors du répertoire prévu", async () => {
     const token = await adminToken();
-    const before = readdirSync(path.dirname(uploadRoot)).length;
-
+    // Le répertoire d'upload est créé par `mkdtempSync` dans /tmp : compter
+    // les entrées de SON PARENT ne mesure rien de fiable — n'importe quel autre
+    // programme (ou un test voisin) y dépose un fichier pendant l'exécution, et
+    // l'assertion échoue pour 1 octet de différence sans qu'aucune traversée
+    // n'ait eu lieu. On mesure donc la seule chose qui compte : ce qui
+    // apparaît DANS le dossier d'upload, et l'absence du fichier hors de lui.
     const res = await uploadImage(
       uploadRequest({
         token,
@@ -385,9 +389,13 @@ describe("téléversement d'une photo", () => {
 
     // Un seul fichier écrit, et il est DANS le répertoire prévu.
     expect(filesOnDisk()).toEqual([fileName]);
-    // Rien n'a été créé au niveau supérieur (là où aboutirait une traversée).
-    expect(readdirSync(path.dirname(uploadRoot)).length).toBe(before);
+    // LA preuve de non-traversée : le fichier visé par le `../` n'existe pas là
+    // où le chemin malveillant le destinait. C'est le contrôle direct, celui
+    // qui échouerait si la traversée fonctionnait — contrairement à un
+    // comptage d'entrées de répertoire, qui dépend de l'environnement.
     expect(existsSync("/tmp/escamotage.png")).toBe(false);
+    // Et le fichier écrit porte bien un nom engendré, donc inoffensif.
+    expect(readdirSync(uploadRoot)).toEqual([fileName]);
   });
 
   it("refuse une image trop petite pour être lisible dans le catalogue", async () => {

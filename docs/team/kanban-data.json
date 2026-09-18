@@ -137,81 +137,81 @@
       "proof": "33 s → 1,3 s par test"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "I",
       "title": "Réconciliation des paiements bloqués",
       "team": "Backend",
-      "proof": "code livré — suite complète à relancer"
+      "proof": "vérifié en production"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "I",
       "title": "Route cron protégée par CRON_SECRET",
       "team": "Backend",
-      "proof": "code livré"
+      "proof": "vérifié : 531/531 vitest + prod"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "I",
       "title": "Page /admin/paiements",
       "team": "Backend + Frontend",
-      "proof": "code livré"
+      "proof": "vérifié : 531/531 vitest + prod"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "J",
       "title": "/api/health avec 503 si base morte",
       "team": "Backend",
-      "proof": "code livré"
+      "proof": "vérifié : 531/531 vitest + prod"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "J",
       "title": "Page /admin/taches (JobRun)",
       "team": "Backend + Frontend",
-      "proof": "code livré"
+      "proof": "vérifié : 531/531 vitest + prod"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "J",
       "title": "Script de sauvegarde DB + rétention",
       "team": "Backend",
-      "proof": "code livré"
+      "proof": "vérifié : 531/531 vitest + prod"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "H",
       "title": "Téléversement d'images (contenu validé)",
       "team": "Backend",
-      "proof": "code livré"
+      "proof": "vérifié : 531/531 vitest + prod"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "H",
       "title": "Réordonnancement / suppression visuels",
       "team": "Backend + Frontend",
-      "proof": "code livré"
+      "proof": "vérifié : 531/531 vitest + prod"
     },
     {
-      "col": "verify",
+      "col": "done",
       "id": "H",
       "title": "Interface admin de gestion des photos",
       "team": "Frontend",
-      "proof": "code livré"
+      "proof": "vérifié : 531/531 vitest + prod"
     },
     {
-      "col": "doing",
+      "col": "done",
       "id": "J",
       "title": "Restauration réellement testée (exigence PO)",
       "team": "Backend",
-      "proof": "test en cours sur base jetable"
+      "proof": "testée : 19 commandes → 19 restaurées, limite documentée"
     },
     {
-      "col": "doing",
+      "col": "done",
       "id": "—",
       "title": "Vérification finale de la suite complète",
       "team": "Chief of Staff",
-      "proof": "après retour des 3 équipes"
+      "proof": "531/531 vitest, tsc 0, back-office 9/9 en prod"
     },
     {
       "col": "backlog",
@@ -254,6 +254,20 @@
       "title": "Rate limiting sur le checkout",
       "team": "—",
       "proof": "repéré par le PO"
+    },
+    {
+      "col": "done",
+      "id": "BUG",
+      "title": "Back-office entier en 500 (frontière serveur/client)",
+      "team": "Chief of Staff",
+      "proof": "9/9 pages admin rétablies — non détecté par les tests, vu en prod"
+    },
+    {
+      "col": "backlog",
+      "id": "—",
+      "title": "Vague 2 — lots 2B (codes promo, avis) puis 2D (multi-devise)",
+      "team": "à lancer",
+      "proof": "cadrée par le PO dans PO-BRIEF-V2.md"
     }
   ],
   "decisions": [

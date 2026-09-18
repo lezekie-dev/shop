@@ -5,7 +5,7 @@ import type { JobStatus } from "@prisma/client";
 import { prismaTest, resetDb, seedFixtures } from "../helpers/prisma-test";
 import AdminJobsPage from "@/app/(admin)/admin/taches/page";
 import { listJobFailureAlerts, listRecentJobRuns } from "@/server/admin-jobs";
-import { visibleNavItems } from "@/ui/components/admin/admin-nav";
+import { visibleNavItems } from "@/ui/components/admin/admin-nav-items";
 
 /**
  * Journal des tâches planifiées — lecture réelle sur shop_test.
