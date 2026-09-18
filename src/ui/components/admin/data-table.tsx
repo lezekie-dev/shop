@@ -29,6 +29,8 @@ export type DataTableProps<T> = {
   rowLabel?: (row: T) => string;
   /** Rendu quand `rows` est vide — emoji + titre + explication + action. */
   emptyState: ReactNode;
+  /** Classe appliquée à chaque ligne (mise en avant d'une ligne critique). */
+  rowClassName?: (row: T) => string | undefined;
 };
 
 export function DataTable<T>({
@@ -39,6 +41,7 @@ export function DataTable<T>({
   rowHref,
   rowLabel,
   emptyState,
+  rowClassName,
 }: DataTableProps<T>) {
   if (rows.length === 0) {
     return <>{emptyState}</>;
@@ -66,8 +69,11 @@ export function DataTable<T>({
         <tbody>
           {rows.map((row) => {
             const href = rowHref?.(row);
+            const classes = [href ? "data-table__row" : "", rowClassName?.(row) ?? ""]
+              .filter(Boolean)
+              .join(" ");
             return (
-              <tr key={getRowKey(row)} className={href ? "data-table__row" : undefined}>
+              <tr key={getRowKey(row)} className={classes || undefined}>
                 {columns.map((column) => {
                   const isFirst = column.key === firstKey;
                   const classes = [

@@ -330,6 +330,17 @@
 .data-table__row-link:focus-visible {
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
+/* Ligne d'un produit masqué : atténuée, jamais invisible. */
+.data-table__row--muted td {
+  color: var(--text-muted);
+}
+/* Ligne sous le seuil de stock : mise en avant sans crier. */
+.data-table__row--low td {
+  background: var(--warning-tint);
+}
+.data-table__row--out td {
+  background: var(--danger-tint);
+}
 
 /* ── Filtres (statut de commande) ── */
 .filters {
