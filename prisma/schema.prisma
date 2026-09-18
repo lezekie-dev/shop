@@ -40,6 +40,26 @@ model Session {
   @@index([expiresAt])
 }
 
+/// Tentative de connexion, réussie ou non.
+///
+/// Sert au rate limiting et au verrouillage temporaire. En BASE et non en
+/// mémoire : Next.js peut servir la même route depuis plusieurs workers, donc
+/// un compteur en RAM se contournerait en tombant sur un autre worker à chaque
+/// essai — exactement ce que fait un attaquant qui insiste.
+///
+/// `identifier` est l'email visé (en minuscules). On ne stocke PAS le mot de
+/// passe tenté, même haché : aucune raison de conserver cette donnée.
+model LoginAttempt {
+  id         String   @id @default(cuid())
+  identifier String
+  succeeded  Boolean
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+  @@index([createdAt])
+}
+
 // ─────────────────────────────────────────────────────────────────────
 // Clients finaux (guest + identifiés)
 // ─────────────────────────────────────────────────────────────────────
