@@ -1,24 +1,36 @@
-# Known issues — Sprint 2
+# Known issues — résolus et suivis
 
-## E2E `guest-checkout.spec.ts` flaky en dev local
+## E2E `guest-checkout.spec.ts` — RÉSOLU
 
-**Symptôme** : lancé via `npx playwright test`, le test échoue avec
-`Unhandled Runtime Error: __webpack_require__.n is not a function` dans
-`add-to-cart-form.tsx`. Lancé isolément (`npx playwright test
-tests/e2e/guest-checkout.spec.ts`), il passe en ~37s.
+**Ancien symptôme** : lancé via `npx playwright test` en mode `next dev`, le test
+échouait par intermittence avec `__webpack_require__.n is not a function` dans
+`add-to-cart-form.tsx`. Lancé isolément, il passait.
 
-**Cause** : bug connu de Next 14.2 + webpack en mode dev : un module
-client partagé entre deux specs (browse + guest-checkout) qui touche la
-fiche produit laisse des chunks périmés dans `.next` après la 1ère
-exécution. La 2e rencontre un module CJS qui n'a plus son helper
-`__webpack_require__.n` injecté.
+**Cause** : bug de Next 14.2 + webpack en mode dev — un module client partagé
+entre deux specs laissait des chunks périmés dans `.next`.
 
-**Contournement validé** :
-- `rm -rf .next && npx playwright test tests/e2e/guest-checkout.spec.ts`
-  → 100% vert
-- En CI GitHub Actions (build de prod, pas dev) → non reproductible
+**Correctif appliqué** : les specs tournent contre le **build de production**
+(`npm run build && npx next start`), pas le dev server. En production, pas de
+HMR ni de chunks invalidés. Vérifié : les 2 specs passent (13,5s au total).
 
-**Fix durable à investiguer en S3** :
-- Passer le webServer Playwright en `npm run build && npm run start`
-  plutôt que `npm run dev`
-- OU ajouter `test.use({ ... })` avec un context isolé par spec
+Commande :
+```
+npm run build && npx next start -p 3108 &
+PLAYWRIGHT_BASE_URL=http://127.0.0.1:3108 npx playwright test
+```
+`playwright.config.ts` démarre `npm run dev` par défaut ; passer
+`PLAYWRIGHT_BASE_URL` court-circuite ce démarrage et pointe sur le serveur prod.
+
+## Pièges rencontrés et documentés dans le code
+
+- **Items de grid/flex et `min-width: auto`** : un tableau large élargissait
+  toute la page au lieu de scroller dans son conteneur. Chaque niveau de la
+  chaîne (`.admin-main`, `.admin-page`, `.admin-page > *`, `.filters`,
+  `.filters__pill`) porte maintenant `min-width: 0`. Voir les commentaires
+  dans `src/ui/styles/admin.css`.
+- **Serveurs `next start` orphelins** : plusieurs instances survivent aux
+  sessions et servent un HTML obsolète référençant des fichiers CSS supprimés,
+  ce qui produit de faux bugs (styles absents, débordements fantômes). Avant
+  toute vérification visuelle : `ss -tlnp | grep :<port>` et tuer l'ancien
+  process, ou utiliser un port neuf.
+

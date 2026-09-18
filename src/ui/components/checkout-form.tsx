@@ -281,8 +281,12 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
                   <span className="pay-option__name">{p.label}</span>
                   <span className="pay-option__desc">{PROVIDER_HINTS[p.name]}</span>
                   {!selectable && (
-                    <span className="pay-option__reason">
-                      Indisponible sur cette boutique : {p.reason ?? "méthode non configurée."}
+                    // Message CLIENT : la raison technique du provider
+                    // (variables d'env, fichier à implémenter) n'a rien à faire
+                    // dans l'interface d'achat. Elle reste disponible aux devs
+                    // via l'attribut title et l'API /api/payments/providers.
+                    <span className="pay-option__reason" title={p.reason ?? undefined}>
+                      Indisponible pour le moment sur cette boutique.
                     </span>
                   )}
                 </span>
