@@ -26,6 +26,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/db";
 import { generateOrderNumber } from "@/domain/order";
+import { generateOrderAccessToken } from "@/lib/order-token";
 import { applyPaymentOutcome } from "@/server/payments";
 
 /** Méthodes de paiement acceptées par le checkout. */
@@ -93,6 +94,12 @@ export type CheckoutInput = {
 export type CreateOrderResult = {
   orderId: string;
   orderNumber: string;
+  /**
+   * Jeton d'accès à la commande. C'est CE secret qu'on transmet au client pour
+   * qu'il consulte sa commande — jamais `orderId`, qui reste un identifiant
+   * interne de back-office.
+   */
+  accessToken: string;
   totalCents: number;
   currency: string;
   paymentRef: string;
@@ -270,6 +277,7 @@ export async function createOrderFromCart(
     const order = await tx.order.create({
       data: {
         number: orderNumber,
+        accessToken: generateOrderAccessToken(),
         customerId: customer.id,
         addressId: shippingAddr.id, // adresse de livraison = référence canonique
         status: "PENDING_PAYMENT",
@@ -344,6 +352,7 @@ export async function createOrderFromCart(
     return {
       orderId: order.id,
       orderNumber,
+      accessToken: order.accessToken,
       totalCents,
       currency,
       paymentRef: intent.providerRef,

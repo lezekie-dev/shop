@@ -42,6 +42,7 @@ export default async function MobileMoneyInstructionsPage({
         select: {
           id: true,
           number: true,
+          accessToken: true,
           totalCents: true,
           currency: true,
           status: true,
@@ -157,7 +158,10 @@ export default async function MobileMoneyInstructionsPage({
       )}
 
       <div className="actions">
-        <Link href={`/orders/${order.id}`} className="btn btn-primary">
+        <Link
+          href={`/orders/${order.id}?token=${order.accessToken}`}
+          className="btn btn-primary"
+        >
           Suivre ma commande
         </Link>
         <Link href="/products" className="btn btn-secondary">

@@ -30,7 +30,14 @@ export default async function BankTransferInstructionsPage({
     },
     include: {
       order: {
-        select: { id: true, number: true, totalCents: true, currency: true, status: true },
+        select: {
+          id: true,
+          number: true,
+          accessToken: true,
+          totalCents: true,
+          currency: true,
+          status: true,
+        },
       },
     },
   });
@@ -132,7 +139,10 @@ export default async function BankTransferInstructionsPage({
       </div>
 
       <div className="actions">
-        <Link href={`/orders/${order.id}`} className="btn btn-primary">
+        <Link
+          href={`/orders/${order.id}?token=${order.accessToken}`}
+          className="btn btn-primary"
+        >
           J&apos;ai effectué le virement
         </Link>
         <Link href="/products" className="btn btn-secondary">

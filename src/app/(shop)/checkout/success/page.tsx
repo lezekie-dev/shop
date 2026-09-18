@@ -10,15 +10,17 @@ export const dynamic = "force-dynamic";
 export default async function CheckoutSuccessPage({
   searchParams,
 }: {
-  searchParams: { orderId?: string; n?: string };
+  searchParams: { orderId?: string; n?: string; token?: string };
 }) {
   const orderId = searchParams.orderId;
-  if (!orderId) {
+  const token = searchParams.token;
+  if (!orderId || !token) {
     redirect("/cart");
   }
-  // Récupère le numéro (fallback sur searchParams.n si la DB a un délai)
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
+  // Le numéro vient de la DB ; `searchParams.n` sert de repli si la lecture
+  // échoue juste après le paiement.
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, accessToken: token },
     select: { number: true, status: true, totalCents: true, currency: true },
   });
   const orderNumber = order?.number ?? searchParams.n ?? "—";
@@ -46,7 +48,7 @@ export default async function CheckoutSuccessPage({
       </div>
 
       <div className="confirm__actions">
-        <Link href={`/orders/${orderId}`} className="btn btn-primary">
+        <Link href={`/orders/${orderId}?token=${token}`} className="btn btn-primary">
           Voir ma commande
         </Link>
         <Link href="/products" className="btn btn-secondary">

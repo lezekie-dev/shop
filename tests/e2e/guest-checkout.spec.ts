@@ -128,10 +128,17 @@ test("guest checkout: ajoute 2 produits → checkout → succès", async ({ page
   const checkoutBody = (await checkoutResponse.json()) as {
     orderId?: string;
     orderNumber?: string;
+    accessToken?: string;
   };
   expect(checkoutBody.orderId, "orderId manquant dans la réponse /api/checkout").toBeTruthy();
   expect(checkoutBody.orderNumber, "orderNumber manquant dans la réponse /api/checkout").toBeTruthy();
   expect(checkoutBody.orderNumber).toMatch(/^ORD-\d{4}-\d{6}$/);
+  // Le jeton d'accès est indispensable : la commande n'est consultable que par
+  // lui (l'id seul ne doit plus rien ouvrir).
+  expect(
+    checkoutBody.accessToken,
+    "accessToken manquant dans la réponse /api/checkout",
+  ).toMatch(/^[0-9a-f]{64}$/);
 
   // 11. Atterrit sur /checkout/success
   await expect(page).toHaveURL(/\/checkout\/success/);
@@ -144,14 +151,13 @@ test("guest checkout: ajoute 2 produits → checkout → succès", async ({ page
   const displayedNumber = (await orderNumberEl.textContent())?.trim() ?? "";
   expect(displayedNumber).toBe(checkoutBody.orderNumber);
 
-  // 13. Lien "Voir ma commande" pointe vers /orders/[orderId]
+  // 13. Lien "Voir ma commande" pointe vers /orders/[orderId] avec le jeton
   const viewLink = page.getByRole("link", { name: /voir ma commande/i });
   await expect(viewLink).toBeVisible();
   const href = await viewLink.getAttribute("href");
-  expect(href).toBe(`/orders/${checkoutBody.orderId}`);
+  expect(href).toBe(`/orders/${checkoutBody.orderId}?token=${checkoutBody.accessToken}`);
 
   // 14. Cliquer, vérifier que la page détail affiche le produit et le statut PAID
-  //     Le 1er hit sur /orders/[id] en dev compile à la demande (~10-30s).
   await Promise.all([
     page.waitForURL(new RegExp(`/orders/${checkoutBody.orderId}`), {
       timeout: 90_000,

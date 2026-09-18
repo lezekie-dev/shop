@@ -131,6 +131,7 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
       const data = (await res.json().catch(() => ({}))) as {
         orderId?: string;
         orderNumber?: string;
+        accessToken?: string;
         redirectUrl?: string | null;
         error?: string;
       };
@@ -142,7 +143,9 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
         return;
       }
       router.push(
-        `/checkout/success?orderId=${data.orderId}&n=${encodeURIComponent(data.orderNumber ?? "")}`,
+        `/checkout/success?orderId=${data.orderId}` +
+          `&token=${encodeURIComponent(data.accessToken ?? "")}` +
+          `&n=${encodeURIComponent(data.orderNumber ?? "")}`,
       );
     } catch (e2) {
       setError(e2 instanceof Error ? e2.message : "Erreur lors de la commande");

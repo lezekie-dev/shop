@@ -51,21 +51,31 @@ function pendingPaymentHref(
 
 export default async function OrderDetailPage({
   params,
+  searchParams,
 }: {
   params: { id: string };
+  searchParams: { token?: string };
 }) {
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
-    include: {
-      items: true,
-      address: true,
-      customer: { select: { email: true, firstName: true, lastName: true, phone: true } },
-      payments: { select: { provider: true, status: true, amountCents: true, currency: true } },
-      shipments: {
-        select: { carrier: true, trackingNo: true, status: true, deliveredAt: true },
-      },
-    },
-  });
+  // Accès par jeton obligatoire : l'id seul n'ouvre plus rien. Sans jeton
+  // valide on rend un 404, ce qui évite de confirmer l'existence de la
+  // commande à un visiteur qui n'a pas le lien complet.
+  const token = searchParams.token;
+  const order = token
+    ? await prisma.order.findFirst({
+        where: { id: params.id, accessToken: token },
+        include: {
+          items: true,
+          address: true,
+          customer: { select: { email: true, firstName: true, lastName: true, phone: true } },
+          payments: {
+            select: { provider: true, status: true, amountCents: true, currency: true },
+          },
+          shipments: {
+            select: { carrier: true, trackingNo: true, status: true, deliveredAt: true },
+          },
+        },
+      })
+    : null;
 
   if (!order) {
     notFound();

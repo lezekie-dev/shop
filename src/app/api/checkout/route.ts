@@ -162,6 +162,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       NextResponse.json({
         orderId: orderResult.orderId,
         orderNumber: orderResult.orderNumber,
+        // Le jeton permet au client de suivre sa commande sans compte.
+        accessToken: orderResult.accessToken,
         totalCents: orderResult.totalCents,
         status: "PENDING_PAYMENT",
         paymentMethod: method,
@@ -186,6 +188,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
               code: "PAYMENT_FAILED",
               orderId: orderResult.orderId,
               orderNumber: orderResult.orderNumber,
+              accessToken: orderResult.accessToken,
               status: "PENDING_PAYMENT",
             },
             { status: 402 },
@@ -198,6 +201,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       NextResponse.json({
         orderId: orderResult.orderId,
         orderNumber: orderResult.orderNumber,
+        accessToken: orderResult.accessToken,
         totalCents: orderResult.totalCents,
         status: cap.status === "succeeded" ? "PAID" : "PENDING_PAYMENT",
         paymentMethod: method,

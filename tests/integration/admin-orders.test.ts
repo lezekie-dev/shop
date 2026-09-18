@@ -7,6 +7,7 @@ import { POST as markShipped } from "@/app/api/admin/orders/[id]/mark-shipped/ro
 
 import { prismaTest, resetDb, seedFixtures } from "../helpers/prisma-test";
 import { newId } from "@/lib/ids";
+import { generateOrderAccessToken } from "@/lib/order-token";
 import {
   countOrdersByStatus,
   getAdminOrderDetail,
@@ -63,6 +64,7 @@ async function createOrder(opts: OrderOptions = {}): Promise<{
   const order = await prismaTest.order.create({
     data: {
       number,
+      accessToken: generateOrderAccessToken(),
       customerId: customer.id,
       addressId: address.id,
       status,
@@ -173,6 +175,7 @@ describe("liste des commandes", () => {
     await prismaTest.order.create({
       data: {
         number: `ORD-2026-90000${seq}`,
+        accessToken: generateOrderAccessToken(),
         customerId: customer.id,
         addressId: address.id,
         status: "PAID",
@@ -244,6 +247,7 @@ describe("liste des commandes", () => {
       await prismaTest.order.create({
         data: {
           number: `ORD-2026-8${`${i}`.padStart(5, "0")}`,
+          accessToken: generateOrderAccessToken(),
           customerId: customer.id,
           addressId: address.id,
           status: "PAID",

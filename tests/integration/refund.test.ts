@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 
 import { prisma } from "@/lib/db";
 import { createId } from "@paralleldrive/cuid2";
+import { generateOrderAccessToken } from "@/lib/order-token";
 import { refundOrder } from "@/server/payments";
 
 /**
@@ -69,6 +70,7 @@ async function seedPaidOrder(quantity: number, initialStock: number) {
   const order = await prisma.order.create({
     data: {
       number: `ORD-TEST-${createId().slice(0, 8)}`,
+      accessToken: generateOrderAccessToken(),
       customerId: customer.id,
       addressId: address.id,
       status: "PAID",

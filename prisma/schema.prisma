@@ -178,6 +178,11 @@ enum OrderStatus {
 model Order {
   id              String      @id @default(cuid())
   number          String      @unique
+  // Jeton d'accès : le client consulte SA commande via ce secret, jamais via
+  // l'id technique. 32 octets aléatoires, non devinable, révocable en le
+  // régénérant. Permet à un invité (sans compte) de suivre sa commande sans
+  // exposer les coordonnées au premier venu qui devine un cuid.
+  accessToken     String      @unique
   customerId      String
   addressId       String
   status          OrderStatus @default(PENDING_PAYMENT)

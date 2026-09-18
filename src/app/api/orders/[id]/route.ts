@@ -5,19 +5,37 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/orders/[id] — lecture seule publique (par orderId suffit pour MVP).
+ * GET /api/orders/[id]?token=<accessToken>
  *
- * Renvoie un OrderDto minimal : id, number, status, totaux, items.
- * Pas d'auth en S2 (le partage du numéro de commande dans l'URL sert de
- * "secret" — voir ADR S4 sur l'espace client authentifié).
+ * Détail d'une commande, en LECTURE SEULE.
+ *
+ * Accès : le jeton `Order.accessToken` (256 bits) est obligatoire. L'id seul ne
+ * suffit plus — avant cette correction, la route renvoyait email, téléphone et
+ * adresse complète du client à quiconque connaissait l'URL. L'id technique
+ * n'est pas un secret : il circule dans les logs admin, les exports et les
+ * URLs de back-office.
+ *
+ * Un jeton invalide renvoie 404 (pas 403) : on ne confirme pas l'existence de
+ * la commande à quelqu'un qui n'a pas le droit de la voir.
  */
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   ctx: { params: { id: string } },
 ): Promise<NextResponse> {
   const orderId = ctx.params.id;
-  const order = await prisma.order.findUnique({
-    where: { id: orderId },
+  const token = req.nextUrl.searchParams.get("token");
+
+  if (!token) {
+    return NextResponse.json(
+      { error: "Jeton d'accès requis (paramètre ?token=)." },
+      { status: 401 },
+    );
+  }
+
+  // On cherche par (id, accessToken) : les deux doivent correspondre. Un jeton
+  // valide sur une AUTRE commande ne donne donc rien.
+  const order = await prisma.order.findFirst({
+    where: { id: orderId, accessToken: token },
     include: {
       items: true,
       customer: { select: { email: true, firstName: true, lastName: true, phone: true } },
@@ -25,9 +43,11 @@ export async function GET(
       payments: { select: { status: true, provider: true, amountCents: true } },
     },
   });
+
   if (!order) {
     return NextResponse.json({ error: "Commande introuvable" }, { status: 404 });
   }
+
   return NextResponse.json({
     id: order.id,
     number: order.number,
