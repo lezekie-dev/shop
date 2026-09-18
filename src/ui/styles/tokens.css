@@ -16,17 +16,17 @@
   --text-body: #4a3428;        /* corps de texte */
   --text-muted: #7a6355;       /* légendes, méta */
   --text-disabled: #a38f82;    /* boutons désactivés (contraste faible voulu) */
-  --text-inverse: #fffaf5;     /* sur fond terracotta */
+  --text-inverse: #ffffff;     /* sur fond terracotta */
 
   /* ── Bordures ── */
   --border-soft: #e8dccb;      /* le trait par défaut sur cream */
-  --border-strong: #ddcfbc;    /* séparateurs marqués */
+  --border-strong: #baa68f;    /* séparateurs marqués */
 
   /* ── Accents ── */
   --accent: #c2410c;           /* terracotta — CTA principal */
   --accent-hover: #aa380a;     /* terracotta survol (plus clair que le pressé) */
   --accent-pressed: #9a3412;   /* terracotta enfoncé — état :active */
-  --accent-tint: #fdf0e7;      /* terracotta 8% pour fonds d'alerte douce */
+  --accent-tint: #f9ebe1;      /* terracotta 8% pour fonds d'alerte douce */
   --accent-ring: rgba(194, 65, 12, 0.25);
 
   --success: #0f766e;          /* vert forêt */
@@ -62,8 +62,8 @@
 
   /* Échelle typographique — Stitch apporte les deux tailles qui manquaient
      entre `--fs-h2` (1.375rem) et `--fs-display`. */
-  --fs-h1-page: 2rem;          /* h1 de page, hors hero */
-  --fs-h3-lg: 1.25rem;         /* sous-titre de section */
+  --fs-h1-page: 1.75rem;          /* h1 de page, hors hero */
+  --fs-h3-lg: 1.375rem;         /* sous-titre de section */
 
   /* ── Typographie ──
      Biface à contraste FORT : un serif avec du caractère pour le titrage,
@@ -73,34 +73,34 @@
      Fraunces est une variable à axes (opsz, SOFT, WONK) : à grand corps elle
      prend une allure éditoriale affirmée, ce qui est exactement ce qu'on veut
      sur le titrage. Inter reste le contrepoint neutre du corps de texte. */
-  --font-display: "Fraunces", "Playfair Display", Georgia, serif;
+  --font-display: "Newsreader", Georgia, "Times New Roman", serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-numeric: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   /* Échelle — sauts LARGES, pas de 1.5x timide.
      `--fs-mega` n'est utilisé qu'une fois par page (le titre du hero) : c'est
      le point d'accroche qui donne le ton. S'il se répète, il ne frappe plus. */
-  --fs-mega: clamp(2.75rem, 7.5vw, 5rem);   /* titre de hero */
-  --fs-display: clamp(2rem, 4.5vw, 3.25rem); /* h1 de page */
-  --fs-h1: clamp(1.5rem, 2.6vw, 2.125rem);
+  --fs-mega: clamp(2.375rem, 5vw, 3.5rem);   /* titre de hero */
+  --fs-display: clamp(1.75rem, 3.4vw, 2.5rem); /* h1 de page */
+  --fs-h1: clamp(1.5rem, 2.2vw, 1.75rem);
   --fs-h2: 1.375rem;
-  --fs-h3: 1.125rem;
-  --fs-body: 1rem;
-  --fs-small: 0.875rem;
-  --fs-micro: 0.75rem;
+  --fs-h3: 1.1875rem;
+  --fs-body: 0.9375rem;
+  --fs-small: 0.8125rem;
+  --fs-micro: 0.8125rem;
 
   /* Interlignage : serré sur le titrage (les grosses tailles n'ont pas besoin
      d'air, elles en ont déjà par leur corps), confortable sur le texte. */
-  --lh-mega: 0.95;
-  --lh-tight: 1.08;
-  --lh-body: 1.6;
+  --lh-mega: 1.14;
+  --lh-tight: 1.2;
+  --lh-body: 1.53;
 
   /* Interlettrage : NÉGATIF sur le titrage (les grandes tailles paraissent
      trop espacées sans correction optique), POSITIF et large sur les petits
      labels en capitales, qui sinon se tassent et deviennent illisibles. */
   --ls-mega: -0.035em;
-  --ls-tight: -0.02em;
-  --ls-label: 0.09em;
+  --ls-tight: -0.025em;
+  --ls-label: 0.02em;
 
   --fw-regular: 400;
   --fw-medium: 500;
@@ -122,11 +122,11 @@
   --r-md: 12px;    /* champs */
   --r-lg: 16px;    /* cartes */
   --r-xl: 20px;    /* blocs majeurs */
-  --r-pill: 999px; /* boutons */
+  --r-pill: 9999px; /* boutons */
 
   /* ── Ombres — douces et diffuses, jamais dures ── */
   --shadow-xs: 0 1px 2px rgba(42, 24, 16, 0.04);
-  --shadow-sm: 0 1px 2px rgba(42, 24, 16, 0.04), 0 1px 3px rgba(42, 24, 16, 0.06);
+  --shadow-sm: 0 1px 2px rgba(42, 24, 16, 0.04);
   --shadow-md: 0 1px 3px rgba(42, 24, 16, 0.06), 0 4px 12px rgba(42, 24, 16, 0.03);
   --shadow-lg: 0 8px 24px rgba(42, 24, 16, 0.08), 0 2px 6px rgba(42, 24, 16, 0.04);
 
@@ -137,7 +137,7 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ── Mise en page ── */
-  --container: 1160px;
+  --container: 1380px;
   --container-narrow: 720px;
   /* Colonne de lecture courte : pages d'instructions de paiement et bloc de
      confirmation, centrés. Une confirmation pleine largeur se lit mal. */
@@ -902,14 +902,44 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 1024px) {
-  /* 4 colonnes quand il y a exactement 4 produits : évite la carte orpheline
-     sur une deuxième ligne avec un grand vide à droite (défaut de hiérarchie
-     repéré à l'audit). Au-delà de 4 produits, la grille repasse à 3 colonnes
-     pour garder des cartes de taille confortable. */
-  .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .card-grid[data-count="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .card-grid[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
+    /* ── 2 COLONNES, comme la maquette ──
+       La maquette Stitch utilise `grid grid-cols-1 sm:grid-cols-2` : DEUX
+       colonnes au maximum, jamais trois ni quatre. Ce n'est pas un oubli de
+       sa part, c'est un choix éditorial : avec deux grandes cartes, chaque
+       visuel produit occupe la moitié de la largeur et se lit comme une
+       pièce, pas comme une vignette de catalogue.
+       Notre grille montait à 3 ou 4 colonnes selon le nombre de produits :
+       des vignettes plus petites, plus denses, qui « font e-commerce »
+       générique. On suit la maquette. */
+    .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    /* ── Nombre IMPAIR de cartes : la dernière est centrée ──
+       La maquette présentait 8 produits, donc 4 rangées pleines — le cas d'un
+       nombre impair ne s'y posait pas. Avec 3 cartes, une grille à 2 colonnes
+       laisse la dernière seule à gauche et un grand vide à droite : le regard
+       lit ce trou comme un manque, pas comme une respiration.
+       La carte orpheline garde donc SA largeur (celle de ses voisines) mais
+       est CENTRÉE : la rangée incomplète devient symétrique, l'œil la perçoit
+       comme voulue. On ne l'élargit pas sur toute la ligne — une carte deux
+       fois plus large que les autres casserait le rythme de lecture. */
+    .card-grid[data-count="3"] > li:last-child,
+    .card-grid[data-count="5"] > li:last-child,
+    .card-grid[data-count="7"] > li:last-child {
+      grid-column: 1 / -1;
+      justify-self: center;
+      /* `border-box` est OBLIGATOIRE ici : la carte a 24px de padding, et sans
+         border-box ces 24px s'AJOUTENT à la largeur demandée. Mesuré sur la
+         page réelle, pour une carte normale de 682px :
+             50%                     → 740px   (écart +58)
+             calc(50% - 8px)         → 732px   (écart +50, padding ajouté)
+             border-box + 50%        → 690px   (écart +8, gouttière non retirée)
+             border-box + calc(50% - 8px) → 682px  ✓
+         Les 8px retirés sont la moitié de la gouttière de 16px : sur sa propre
+         ligne, la carte n'a plus de voisine dont se partager l'écart. */
+      box-sizing: border-box;
+      width: calc(50% - 8px);
+    }
+  }
 /* La carte EST l'item de grille : les cartes d'une même rangée s'alignent en
    hauteur, et le prix descend au bas de la carte (`margin-top: auto`). */
 .card-grid > li {

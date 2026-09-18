@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Fraunces, Inter } from "next/font/google";
+import { Newsreader, Inter, JetBrains_Mono } from "next/font/google";
 
 import "@/ui/styles/tokens.css";
 import "@/ui/styles/shell.css";
@@ -10,41 +10,55 @@ import { SiteFooter } from "@/ui/components/site-footer";
 import { loadHeaderCategories } from "@/server/catalog";
 
 /*
- * Les deux polices du design system sont chargées via next/font : Next les
- * télécharge au build et les sert depuis le domaine de l'app (aucune requête
- * vers Google au runtime, aucun décalage de texte sur réseau 3G).
+ * Polices chargées via next/font : Next les télécharge au build et les sert
+ * depuis le domaine de l'app (aucune requête vers Google au runtime, aucun
+ * décalage de texte sur réseau 3G).
  *
  * Chaque police écrit SA variable de token sur <body> :
- *   --font-display → Fraunces (titrage éditorial)
- *   --font-body    → Inter   (corps de texte)
+ *   --font-display → Newsreader (titrage éditorial)
+ *   --font-body    → Inter      (corps de texte)
+ *   --font-numeric → JetBrains Mono (montants et identifiants)
  *
  * tokens.css reste la seule source des valeurs de repli (Georgia, system-ui) :
  * si une police ne se charge pas, la pile de secours s'applique inchangée.
  */
 
 /**
- * Fraunces est une police variable à trois axes :
- *   - `opsz` (taille optique) : auto via `font-optical-sizing`
- *   - `wght` (graisse) : 100-900, on l'interpole librement
- *   - `SOFT` : adoucit les terminaisons — les valeurs hautes donnent une
- *     allure plus calligraphique, qu'on ne veut PAS (trop décoratif)
- *   - `WONK` : active des détails « excentriques » (jambages, italiques
- *     alternatives). On l'ACTIVE : c'est ce qui donne à Fraunces son
- *     caractère éditorial qui la distingue d'un serif neutre — sans lui,
- *     le titrage redevient quelconque, ce qui était exactement le reproche
- *     fait au design précédent.
+ * Newsreader — APPLIQUÉE « à la lettre » depuis la maquette Stitch.
+ *
+ * Le remplacement de Fraunces par Newsreader n'est pas un détail : les
+ * MAQUETTES HTML (celles dont les captures ont servi de référence) chargent
+ * explicitement `Newsreader` — le fichier de tokens joint disait Fraunces,
+ * mais c'est le HTML qui fait foi puisqu'il a produit le rendu validé.
+ *
+ * Newsreader est un serif éditorial de presse, avec un axe optique (`opsz`)
+ * qui durcit les contrastes sur les grandes tailles. C'est ce qui donne au
+ * titrage son air de une de magazine, là où Fraunces penchait vers
+ * l'affiche. On garde l'axe `opsz` auto.
  */
-const fraunces = Fraunces({
+const newsreader = Newsreader({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-display",
-  axes: ["SOFT", "WONK", "opsz"],
+  style: ["normal", "italic"],
 });
 
 const inter = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-body",
+});
+
+/**
+ * JetBrains Mono — réservée aux MONTANTS et identifiants, comme la maquette
+ * le prescrit. Une police à chasse fixe aligne les colonnes de chiffres : sur
+ * un récapitulatif de commande, les centimes tombent les uns sous les autres
+ * au lieu de flotter.
+ */
+const jetbrains = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-numeric",
 });
 
 export const metadata: Metadata = {
@@ -72,7 +86,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="fr">
-      <body className={`${fraunces.variable} ${inter.variable}`}>
+      <body className={`${newsreader.variable} ${inter.variable} ${jetbrains.variable}`}>
         <SiteHeader categories={categories} />
         <main className="site-main">{children}</main>
         <SiteFooter />
