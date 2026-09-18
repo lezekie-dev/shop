@@ -1,27 +1,27 @@
 <html><head><meta charset="utf-8"><style>
 *{box-sizing:border-box}
-body{font:14px/1.5 ui-sans-serif,system-ui,sans-serif;background:#faf6ef;color:#4a3428;margin:0;padding:34px 30px 40px}
-h1{font-family:Georgia,"Times New Roman",serif;font-size:2.1rem;letter-spacing:-.02em;color:#2a1810;margin:0 0 4px}
+body{font:12.5px/1.42 ui-sans-serif,system-ui,sans-serif;background:#faf6ef;color:#4a3428;margin:0;padding:22px 20px 26px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:1.7rem;letter-spacing:-.02em;color:#2a1810;margin:0 0 4px}
 .sub{color:#8a7264;font-size:13px;margin:0 0 20px}
 .rule{background:#f6efe1;border:1.5px solid #e8dcc4;border-radius:10px;padding:12px 16px;margin-bottom:22px;font-size:13px}
 .rule b{color:#2a1810}
 h2{font-family:Georgia,serif;font-size:1.15rem;color:#2a1810;margin:26px 0 10px;text-transform:uppercase;letter-spacing:.06em;font-size:.8rem}
-.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start}
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;align-items:start}
 .col{background:#fff;border:1.5px solid #e8dcc4;border-radius:12px;padding:12px;min-width:0}
 .col__head{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .col__label{font-weight:700;color:#2a1810;font-size:13.5px}
 .col__count{background:#f6efe1;color:#2a1810;border-radius:99px;padding:1px 9px;font-size:12px;font-weight:700}
 .col__hint{color:#8a7264;font-size:11px;margin:2px 0 10px;font-style:italic}
 .col__wip{color:#c2410c;font-size:10.5px;margin:0 0 10px;font-weight:600}
-.card{border:1px solid #e8dcc4;border-radius:9px;padding:9px 10px;margin-bottom:8px;background:#faf6ef}
+.card{border:1px solid #e8dcc4;border-radius:7px;padding:6px 8px;margin-bottom:5px;background:#faf6ef}
 .card__top{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-bottom:5px}
 .badge{color:#fffaf5;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px;letter-spacing:.04em}
 .team{font-size:10.5px;color:#8a7264;text-align:right}
-.card__title{font-weight:600;color:#2a1810;margin:0 0 3px;font-size:13px}
-.card__proof{color:#8a7264;font-size:11.5px;margin:0}
-table{width:100%;border-collapse:collapse;background:#fff;border:1.5px solid #e8dcc4;border-radius:10px;overflow:hidden;font-size:13px}
-th{background:#c2410c;color:#fffaf5;text-align:left;padding:8px 11px;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
-td{padding:8px 11px;border-bottom:1px solid #e8dcc4}
+.card__title{font-weight:600;color:#2a1810;margin:0 0 2px;font-size:11.5px}
+.card__proof{color:#8a7264;font-size:10px;margin:0}
+table{width:100%;border-collapse:collapse;background:#fff;border:1.5px solid #e8dcc4;border-radius:8px;overflow:hidden;font-size:11.5px}
+th{background:#c2410c;color:#fffaf5;text-align:left;padding:5px 9px;font-size:10px;text-transform:uppercase;letter-spacing:.06em}
+td{padding:5px 9px;border-bottom:1px solid #e8dcc4}
 td.muted{color:#8a7264}
 td.accent{color:#c2410c;font-weight:600}
 td.mono{font-family:ui-monospace,monospace;font-size:12px;color:#8a7264}
@@ -108,130 +108,55 @@ tr:last-child td{border-bottom:0}
   </div><div class="col">
     <div class="col__head">
       <span class="col__label">Terminé</span>
-      <span class="col__count">24</span>
+      <span class="col__count">24 tâches · 9 lots</span>
     </div>
     <p class="col__hint">vérifié sur preuve</p>
     
     <div class="card">
     <div class="card__top"><span class="badge" style="background:#0f766e">MVP</span>
       <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Catalogue, panier, checkout invité</p>
-    <p class="card__proof">12/12 contrôles visuels, 2/2 Playwright prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#0f766e">MVP</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">3 paiements simulés + remboursement</p>
-    <p class="card__proof">REFUNDED idempotent, vérifié en prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#0f766e">MVP</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Back-office (dashboard, commandes, stock)</p>
-    <p class="card__proof">11/11 contrôles visuels</p>
+    <p class="card__title">3 tâches livrées</p>
+    <p class="card__proof">Catalogue, panier, checkout invité · 3 paiements simulés + remboursement · Back-office (dashboard, commandes, stock)</p>
   </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#9a3412">SEC</span>
       <span class="team">QA / Sécurité</span></div>
-    <p class="card__title">Accès commande par jeton 256 bits</p>
-    <p class="card__proof">401/404/404/200 vérifié en prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#9a3412">SEC</span>
-      <span class="team">QA / Sécurité</span></div>
-    <p class="card__title">Rate limiting connexion admin</p>
-    <p class="card__proof">401 ×5 puis 429, vérifié en prod</p>
+    <p class="card__title">2 tâches livrées</p>
+    <p class="card__proof">Accès commande par jeton 256 bits · Rate limiting connexion admin</p>
   </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#7c3aed">UI</span>
       <span class="team">Frontend</span></div>
-    <p class="card__title">Refonte design (identité, icônes SVG)</p>
-    <p class="card__proof">9/9 pages, 0 erreur JS</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#7c3aed">UI</span>
-      <span class="team">Frontend</span></div>
-    <p class="card__title">Packshots produit cohérents</p>
-    <p class="card__proof">script versionné, contraste validé</p>
+    <p class="card__title">2 tâches livrées</p>
+    <p class="card__proof">Refonte design (identité, icônes SVG) · Packshots produit cohérents</p>
   </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
       <span class="team">Chief of Staff</span></div>
-    <p class="card__title">Schéma Prisma étendu (19 → 29 tables)</p>
-    <p class="card__proof">migration appliquée, 210/210 verts</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Espace client (comptes, commandes, adresses)</p>
-    <p class="card__proof">362/362 vitest</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Recherche + catégories + tri + pagination</p>
-    <p class="card__proof">14/14 contrôles visuels</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Rôles staff + 2FA TOTP + audit</p>
-    <p class="card__proof">31/31 tests, vecteurs RFC 6238</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
-      <span class="team">Chief of Staff</span></div>
-    <p class="card__title">Cause racine du blocage d'agent (resetDb)</p>
-    <p class="card__proof">33 s → 1,3 s par test</p>
+    <p class="card__title">5 tâches livrées</p>
+    <p class="card__proof">Schéma Prisma étendu (19 → 29 tables) · Espace client (comptes, commandes, adresses) · Recherche + catégories + tri + pagination…</p>
   </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#b45309">I</span>
       <span class="team">Backend</span></div>
-    <p class="card__title">Réconciliation des paiements bloqués</p>
-    <p class="card__proof">vérifié en production</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Route cron protégée par CRON_SECRET</p>
-    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Page /admin/paiements</p>
-    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+    <p class="card__title">3 tâches livrées</p>
+    <p class="card__proof">Réconciliation des paiements bloqués · Route cron protégée par CRON_SECRET · Page /admin/paiements</p>
   </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
       <span class="team">Backend</span></div>
-    <p class="card__title">/api/health avec 503 si base morte</p>
-    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Page /admin/taches (JobRun)</p>
-    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Script de sauvegarde DB + rétention</p>
-    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
+    <p class="card__title">4 tâches livrées</p>
+    <p class="card__proof">/api/health avec 503 si base morte · Page /admin/taches (JobRun) · Script de sauvegarde DB + rétention…</p>
   </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#065f46">H</span>
       <span class="team">Backend</span></div>
-    <p class="card__title">Téléversement d'images (contenu validé)</p>
-    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
-      <span class="team">Backend + Frontend</span></div>
-    <p class="card__title">Réordonnancement / suppression visuels</p>
-    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
-      <span class="team">Frontend</span></div>
-    <p class="card__title">Interface admin de gestion des photos</p>
-    <p class="card__proof">vérifié : 531/531 vitest + prod</p>
-  </div><div class="card">
-    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
-      <span class="team">Backend</span></div>
-    <p class="card__title">Restauration réellement testée (exigence PO)</p>
-    <p class="card__proof">testée : 19 commandes → 19 restaurées, limite documentée</p>
+    <p class="card__title">3 tâches livrées</p>
+    <p class="card__proof">Téléversement d'images (contenu validé) · Réordonnancement / suppression visuels · Interface admin de gestion des photos</p>
   </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#8a7264">—</span>
       <span class="team">Chief of Staff</span></div>
-    <p class="card__title">Vérification finale de la suite complète</p>
-    <p class="card__proof">531/531 vitest, tsc 0, back-office 9/9 en prod</p>
+    <p class="card__title">1 tâche livrée</p>
+    <p class="card__proof">Vérification finale de la suite complète</p>
   </div><div class="card">
     <div class="card__top"><span class="badge" style="background:#8a7264">BUG</span>
       <span class="team">Chief of Staff</span></div>
-    <p class="card__title">Back-office entier en 500 (frontière serveur/client)</p>
-    <p class="card__proof">9/9 pages admin rétablies — non détecté par les tests, vu en prod</p>
+    <p class="card__title">1 tâche livrée</p>
+    <p class="card__proof">Back-office entier en 500 (frontière serveur/client)</p>
   </div>
   </div></div>
 <h2>Décisions en attente du propriétaire</h2>
