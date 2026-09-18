@@ -92,6 +92,12 @@
   /* ── Mise en page ── */
   --container: 1120px;
   --container-narrow: 720px;
+  /* Colonne de lecture courte : pages d'instructions de paiement et bloc de
+     confirmation, centrés. Une confirmation pleine largeur se lit mal. */
+  --container-slim: 34rem;
+  /* Le back-office affiche des tableaux à 7 colonnes : le plafond de 1120px
+     forçait un scroll horizontal même en 1440px d'écran. */
+  --container-admin: 1360px;
 }
 
 /* ── Profondeur de fond : dégradés radiaux fixes, jamais un aplat ── */
@@ -224,6 +230,15 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   box-shadow: var(--shadow-md);
 }
 
+/* Titre de carte (h2 dans .card) — partagé back-office / parcours client. */
+.card__title {
+  margin: 0 0 var(--sp-3);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-medium);
+  color: var(--text-strong);
+}
+
 /* ── Badges de statut : couleur + forme + libellé, JAMAIS couleur seule ── */
 
 .badge {
@@ -274,6 +289,66 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   margin-bottom: var(--sp-2);
 }
 .empty-state__text { color: var(--text-muted); font-size: var(--fs-small); margin-bottom: var(--sp-5); }
+/* Actions d'un état vide : recentrées, jamais un cul-de-sac. */
+.empty-state__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ── Pastilles de filtre — partagées back-office (/admin/orders)
+   et catalogue client : une seule définition, deux usages. ── */
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
+  align-items: center;
+  /* Sans min-width:0, un enfant nowrap (pastilles + compteurs) force la boîte
+     à dépasser la largeur du viewport sur mobile : le parent flex refuse de
+     rétrécir sous la taille de son contenu. */
+  min-width: 0;
+  max-width: 100%;
+}
+.filters__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 0.25rem 0.625rem;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--border-soft);
+  background: var(--bg-raised);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  color: var(--text-body);
+  /* Sans min-width:0 les pastilles refusent de rétrécir et la rangée de filtres
+     impose sa largeur intrinsèque (~1030px) à toute la page sur mobile. */
+  min-width: 0;
+  max-width: 100%;
+  transition:
+    border-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+.filters__pill:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  text-decoration: none;
+}
+.filters__pill--active {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.filters__count {
+  font-family: var(--font-numeric);
+  color: var(--text-muted);
+}
+.filters__pill--active .filters__count {
+  color: var(--accent);
+}
 
 /* ── Squelettes de chargement : forme du contenu réel, pas un spinner centré ── */
 
@@ -341,10 +416,116 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   gap: var(--sp-3);
   padding: var(--sp-3) 0;
   border-bottom: 1px solid var(--border-soft);
+  /* Libellé + valeur ne tiennent pas toujours sur une ligne : la ligne se
+     replie au lieu de déborder. */
+  flex-wrap: wrap;
 }
 .instruction-row:last-child { border-bottom: none; }
 .instruction-row__label { font-size: var(--fs-micro); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
-.instruction-row__value { font-family: var(--font-numeric); font-size: var(--fs-small); color: var(--text-strong); }
+.instruction-row__value {
+  font-family: var(--font-numeric);
+  font-size: var(--fs-small);
+  color: var(--text-strong);
+  text-align: right;
+  /* Un IBAN fait ~31 caractères : il doit pouvoir se replier sous son libellé
+     plutôt que d'élargir la page à 360px. */
+  overflow-wrap: anywhere;
+}
+
+/* ── Formulaires — primitives partagées (back-office + parcours client) ── */
+
+.form-grid {
+  display: grid;
+  gap: var(--sp-4);
+}
+.form-grid--2 {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+/* Deux champs côte à côte, mais jamais plus étroits que la place disponible :
+   `minmax(0, 1fr)` (et non une largeur minimale en dur) garantit qu'aucun
+   champ ne peut imposer une largeur supérieure à son conteneur. */
+.form-grid--split {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 560px) {
+  .form-grid--split { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* Ville / code postal : la ville a besoin de deux fois plus de place. */
+.form-grid--city {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 560px) {
+  .form-grid--city { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); }
+}
+.form-field {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+/* Les champs occupent la largeur de leur colonne. Les contrôles de type
+   « case à cocher » sont hors de ce sélecteur direct : ils gardent leur taille. */
+.form-field > input,
+.form-field > select,
+.form-field > textarea {
+  width: 100%;
+  min-width: 0;
+  /* `width: 100%` désigne la largeur du CONTENU : sans `border-box`, le padding
+     (1.5rem de bordure comprise) s'ajoute et le champ dépasse sa colonne. */
+  box-sizing: border-box;
+}
+/* Champ volontairement court (quantité) : 8rem = largeur d'un nombre à 3 chiffres
+   plus les flèches natives du champ numérique. */
+.form-field--narrow {
+  max-width: 8rem;
+}
+.form-field--disabled {
+  opacity: 0.6;
+}
+.form-field__label {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.form-field__hint {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  margin: 0;
+}
+.form-field__error {
+  font-size: var(--fs-small);
+  color: var(--danger);
+  margin: 0;
+}
+/* Marqueur d'astérisque : l'information « champ requis » est aussi portée par
+   l'attribut `required`, la couleur n'est jamais le seul signal. */
+.form-field__req {
+  color: var(--danger);
+}
+/* État d'erreur : la bordure seule ne suffit pas, un texte explicatif
+   (`.form-field__error`) l'accompagne toujours. */
+.form-field--invalid > input,
+.form-field--invalid > select {
+  border-color: var(--danger);
+  background: var(--danger-tint);
+}
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.form-feedback {
+  font-size: var(--fs-small);
+  margin: 0;
+}
+.form-feedback--ok {
+  color: var(--success);
+}
+.form-feedback--error {
+  color: var(--danger);
+}
 
 /* ── Accessibilité ── */
 
@@ -362,4 +543,678 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* ============================================================
+   Parcours client — couche boutique.
+   Mêmes jetons et mêmes classes partagées que le back-office
+   (.card, .btn, .badge, .empty-state, .notice, .filters…).
+   Aucune couleur, police, durée ni rayon n'est écrit ici.
+   ============================================================ */
+
+/* ── Structure de page ──
+   Les sections s'empilent et l'espacement vient des jetons, pas des marges
+   par défaut du navigateur (qui, elles, varient d'un navigateur à l'autre). */
+
+.page {
+  display: grid;
+  gap: var(--sp-6);
+  min-width: 0;
+}
+/* Même piège que `.admin-page` : un enfant de grille a `min-width: auto` et
+   refuse de rétrécir sous sa largeur intrinsèque — il élargit la page au lieu
+   de laisser son contenu se replier (débordement horizontal à 360px). */
+.page > * {
+  min-width: 0;
+  /* `align-content: start` n'est pas nécessaire : chaque enfant est une ligne
+     de grille, ils ne s'étirent pas verticalement. */
+}
+.page--slim {
+  max-width: var(--container-slim);
+  margin: 0 auto;
+}
+
+.page__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.page__head > * {
+  min-width: 0;
+}
+.page__title {
+  font-size: var(--fs-display);
+  /* Un titre long (nom de produit, de catégorie) se coupe plutôt que
+     d'élargir la page. */
+  overflow-wrap: break-word;
+}
+.page__sub {
+  margin: var(--sp-2) 0 0;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+
+.section {
+  display: grid;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.section > * {
+  min-width: 0;
+}
+.section__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.section__title {
+  margin: 0;
+}
+.section__sub {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+
+/* ── Héros d'accueil : un seul CTA primaire, rien d'autre à cliquer ── */
+
+.hero {
+  display: grid;
+  gap: var(--sp-4);
+  justify-items: start;
+  max-width: var(--container-narrow);
+  padding: var(--sp-7) 0 var(--sp-5);
+}
+.hero__title {
+  font-size: var(--fs-display);
+}
+.hero__lead {
+  margin: 0;
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-regular);
+  color: var(--text-muted);
+  line-height: var(--lh-body);
+}
+.hero__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ── Grille de cartes : 1 colonne mobile / 2 tablette / 3 desktop ── */
+
+.card-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 640px) {
+  .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (min-width: 1024px) {
+  .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+/* La carte EST l'item de grille : les cartes d'une même rangée s'alignent en
+   hauteur, et le prix descend au bas de la carte (`margin-top: auto`). */
+.card-grid > li {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+/* Nom en serif, cliquable seul : le surtitre et le prix ne sont pas dans le
+   lien, donc le libellé accessible du lien reste exactement le nom. */
+.card-title {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  text-decoration: none;
+  overflow-wrap: break-word;
+}
+.card-title:hover {
+  color: var(--accent);
+  text-decoration: none;
+}
+.card-meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.card-price {
+  margin: 0;
+  margin-top: auto;
+  color: var(--text-strong);
+  font-weight: var(--fw-semibold);
+}
+
+/* Surtitre de section (catégorie au-dessus d'un titre) */
+.eyebrow {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Montant mis en avant (total du panier, total d'une commande) */
+.money--lg {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+
+/* ── Fiche produit : 1 colonne mobile, 2 colonnes desktop ── */
+
+.detail {
+  display: grid;
+  gap: var(--sp-6);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+@media (min-width: 900px) {
+  .detail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.detail__media {
+  display: grid;
+  gap: var(--sp-2);
+  place-items: center;
+  /* Le visuel n'existe pas encore : un cadre au format 4/3 réserve la place
+     exacte qu'il occupera, la page ne saute pas quand il arrivera. */
+  aspect-ratio: 4 / 3;
+  padding: var(--sp-5);
+  text-align: center;
+  background: var(--bg-sand);
+  border: 1.5px dashed var(--border-strong);
+  border-radius: var(--r-lg);
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+.detail__media-emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+.detail__info {
+  display: grid;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.detail__desc {
+  margin: 0;
+  color: var(--text-body);
+}
+.detail__price {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  margin: 0;
+  color: var(--text-strong);
+}
+
+/* ── Barre de résultats (compteur + tri) ── */
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.toolbar__count {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+.toolbar__sort {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+}
+
+/* ── Lignes d'article (panier, articles d'une commande) ── */
+
+.line-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.line {
+  display: grid;
+  /* 64px = vignette carrée, assez grande pour reconnaître un produit, assez
+     petite pour laisser la place au nom et au prix à 360px. */
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: var(--sp-4);
+  align-items: start;
+  min-width: 0;
+}
+.line--stacked {
+  grid-template-columns: minmax(0, 1fr);
+}
+.line__media {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  border-radius: var(--r-sm);
+  background: var(--bg-sand);
+  border: 1.5px solid var(--border-soft);
+  font-size: 1.5rem;
+}
+.line__body {
+  display: grid;
+  gap: var(--sp-1);
+  min-width: 0;
+}
+.line__name {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  overflow-wrap: break-word;
+}
+.line__name:hover {
+  color: var(--accent);
+}
+.line__article {
+  font-weight: var(--fw-medium);
+  color: var(--text-strong);
+  overflow-wrap: break-word;
+}
+.line__meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+.line__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+}
+.line__total {
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+/* Article dont le stock ne couvre plus la quantité demandée : signalé par un
+   badge + une explication, jamais par la couleur seule. */
+.line--unavailable .line__name,
+.line--unavailable .line__article {
+  color: var(--text-muted);
+}
+
+/* ── Sélecteur de quantité ── */
+
+.qty {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-raised);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-pill);
+}
+.qty__btn {
+  padding: var(--sp-2) var(--sp-3);
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font-family: var(--font-numeric);
+  font-size: var(--fs-body);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color var(--dur-base) var(--ease),
+    color var(--dur-base) var(--ease);
+}
+.qty__btn:hover:not(:disabled) {
+  background: var(--accent-tint);
+  color: var(--accent);
+}
+.qty__btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* Le conteneur a des coins arrondis : un `box-shadow` de focus serait rogné,
+   on dessine donc l'anneau à l'intérieur du bouton. */
+.qty__btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.qty__value {
+  min-width: 2.5rem;
+  text-align: center;
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-small);
+  color: var(--text-strong);
+}
+
+/* ── Récapitulatif chiffré ── */
+
+.summary {
+  display: grid;
+  gap: var(--sp-2);
+}
+.summary__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  font-size: var(--fs-small);
+}
+.summary__label {
+  color: var(--text-muted);
+}
+.summary__value {
+  color: var(--text-strong);
+  font-weight: var(--fw-medium);
+}
+.summary__row--total {
+  margin-top: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--border-soft);
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+}
+.summary__row--total .summary__label {
+  color: var(--text-strong);
+}
+
+/* ── Deux colonnes formulaire / récapitulatif ── */
+
+.split {
+  display: grid;
+  gap: var(--sp-5);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+}
+.split > * {
+  min-width: 0;
+}
+@media (min-width: 1000px) {
+  /* 20rem = largeur du récapitulatif : assez pour « Sous-total 1 234,00 € »
+     sans jamais forcer la colonne du formulaire à passer sous 480px. */
+  .split { grid-template-columns: minmax(0, 1fr) 20rem; }
+  /* Le récapitulatif suit la lecture pendant qu'on remplit le formulaire. */
+  .split__aside { position: sticky; top: var(--sp-4); }
+}
+.split__aside {
+  display: grid;
+  gap: var(--sp-5);
+  align-content: start;
+}
+
+/* ── Options de paiement ── */
+
+.pay-options {
+  display: grid;
+  gap: var(--sp-3);
+}
+.pay-option {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--sp-3);
+  align-items: start;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--bg-inset);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease);
+}
+.pay-option:hover {
+  border-color: var(--border-strong);
+}
+.pay-option--active {
+  border-color: var(--accent);
+  background: var(--accent-tint);
+}
+.pay-option--disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.pay-option__name {
+  display: block;
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+.pay-option__desc {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+}
+.pay-option__reason {
+  display: block;
+  margin-top: var(--sp-1);
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  overflow-wrap: anywhere;
+}
+
+/* ── Étapes du suivi de commande ── */
+
+.steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 720px) {
+  .steps {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+  }
+}
+.steps__item {
+  position: relative;
+  display: grid;
+  gap: var(--sp-2);
+  padding-top: var(--sp-2);
+  min-width: 0;
+}
+.steps__dot {
+  /* 2rem = diamètre du point, assez grand pour contenir un chiffre lisible. */
+  width: 2rem;
+  height: 2rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-inset);
+  border: 1.5px solid var(--border-strong);
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-bold);
+}
+.steps__item--done .steps__dot {
+  background: var(--success-tint);
+  border-color: rgba(15, 118, 110, 0.3);
+  color: var(--success);
+}
+.steps__item--current .steps__dot {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
+}
+/* Connecteur horizontal : uniquement en disposition en ligne (≥720px).
+   En dessous, les étapes sont une liste verticale et la ligne n'aurait
+   aucun sens. */
+@media (min-width: 720px) {
+  .steps__item:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    /* haut = padding-top + demi-point - demi-trait (2px) */
+    top: calc(var(--sp-2) + 1rem - 1px);
+    left: calc(2rem + var(--sp-3));
+    right: var(--sp-3);
+    height: 2px;
+    border-radius: var(--r-pill);
+    background: var(--border-soft);
+  }
+  .steps__item--done:not(:last-child)::after {
+    background: var(--success);
+  }
+}
+.steps__label {
+  font-weight: var(--fw-medium);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.steps__item--done .steps__label,
+.steps__item--current .steps__label {
+  color: var(--text-strong);
+}
+.steps__date {
+  font-family: var(--font-numeric);
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+}
+
+/* ── Bloc de suivi (transporteur + numéro) ── */
+
+.tracking {
+  display: grid;
+  gap: var(--sp-2);
+}
+.tracking__carrier {
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+.tracking__no {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-medium);
+  color: var(--text-strong);
+  /* Un numéro de suivi est long et sans espace : il doit se couper plutôt que
+     d'élargir la page à 360px. */
+  overflow-wrap: anywhere;
+}
+
+/* ── Confirmation de commande ── */
+
+.confirm {
+  display: grid;
+  gap: var(--sp-4);
+  justify-items: center;
+  text-align: center;
+  max-width: var(--container-slim);
+  margin: 0 auto;
+}
+.confirm__emoji {
+  font-size: 2.5rem;
+  line-height: 1;
+}
+.confirm__lead {
+  margin: 0;
+  color: var(--text-muted);
+}
+.confirm__card {
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: center;
+  width: 100%;
+  /* Même piège que `.btn-block` : la `.card` porte 1.5rem de padding. */
+  box-sizing: border-box;
+}
+.confirm__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ── Instructions numérotées (Mobile Money) ── */
+
+.steps-list {
+  margin: 0;
+  padding-left: var(--sp-5);
+  display: grid;
+  gap: var(--sp-3);
+  color: var(--text-body);
+  font-size: var(--fs-small);
+}
+.steps-list__code {
+  font-family: var(--font-numeric);
+  font-size: var(--fs-h3);
+  color: var(--text-strong);
+}
+
+/* ── Utilitaires partagés ── */
+
+/* Formulaire : les groupes de champs s'espacent comme les sections. */
+.form {
+  display: grid;
+  gap: var(--sp-5);
+}
+/* Ligne de case à cocher : le contrôle garde sa taille, le texte se replie. */
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-small);
+  color: var(--text-body);
+}
+.check input {
+  flex: none;
+}
+/* Un libellé long (nom de produit) ne doit jamais élargir la page : il se replie. */
+.summary__row > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.line__meta {
+  overflow-wrap: anywhere;
+}
+
+.muted {
+  color: var(--text-muted);
+}
+.small {
+  font-size: var(--fs-small);
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.actions--between {
+  justify-content: space-between;
+}
+/* Bouton pleine largeur (CTA d'une colonne latérale). Sans `border-box`, les
+   1.25rem de padding horizontal s'ajoutent aux 100 % et le bouton dépasse de
+   40px son conteneur (mesuré : 18px de débordement de page à 360px). */
+.btn-block {
+  width: 100%;
+  box-sizing: border-box;
+  justify-content: center;
+}
+.note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-micro);
 }

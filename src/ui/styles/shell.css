@@ -34,8 +34,18 @@
   color: var(--text-muted);
 }
 
+/* Le <main> racine ne plafonne PAS la largeur : chaque layout (boutique,
+   back-office) pose son propre plafond via son conteneur interne. Plafonner
+   ici écrasait la largeur du back-office, qui a besoin de plus de place pour
+   ses tableaux. */
 .site-main {
-  max-width: var(--container);
   margin: 0 auto;
   padding: var(--sp-4);
+}
+
+/* Conteneur du parcours client : plafond de lecture confortable. */
+.shop-container {
+  max-width: var(--container);
+  margin: 0 auto;
+  padding: var(--sp-5) 0 var(--sp-7);
 }

@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@/lib/db";
+
+import { formatMoneyEur } from "@/domain/pricing";
 import { AddToCartForm } from "@/ui/components/add-to-cart-form";
+import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -37,19 +40,73 @@ export default async function ProductDetailPage({
     };
   });
 
-  return (
-    <article style={{ maxWidth: 720 }}>
-      <p style={{ color: "#777", fontSize: "0.85rem", textTransform: "uppercase" }}>
-        {product.category.name}
-      </p>
-      <h1 style={{ marginTop: "0.25rem" }}>{product.name}</h1>
-      <p style={{ color: "#333" }}>{product.description}</p>
+  const prices = variants.map((v) => v.priceCents);
+  const minPrice = prices.length > 0 ? Math.min(...prices) : null;
+  const maxPrice = prices.length > 0 ? Math.max(...prices) : null;
+  const anyAvailable = variants.some((v) => v.available > 0);
 
-      {variants.length === 0 ? (
-        <p style={{ marginTop: "1.5rem", color: "#666" }}>Ce produit n&apos;a pas de variante disponible.</p>
-      ) : (
-        <AddToCartForm variants={variants} />
-      )}
-    </article>
+  return (
+    <div className="page">
+      <div className="detail enter enter-1">
+        <div className="detail__media">
+          <span className="detail__media-emoji" aria-hidden>
+            📦
+          </span>
+          <p>Visuel du produit à venir</p>
+        </div>
+
+        <div className="detail__info">
+          <p className="eyebrow">{product.category.name}</p>
+          <h1 className="page__title">{product.name}</h1>
+          <p className="detail__desc">{product.description}</p>
+
+          {minPrice !== null && (
+            <p className="detail__price">
+              {minPrice === maxPrice ? (
+                <>
+                  Prix : <span className="money money--lg">{formatMoneyEur(minPrice)}</span>
+                </>
+              ) : (
+                <>
+                  De <span className="money">{formatMoneyEur(minPrice)}</span> à{" "}
+                  <span className="money">{formatMoneyEur(maxPrice ?? minPrice)}</span>
+                </>
+              )}
+            </p>
+          )}
+
+          {!anyAvailable && variants.length > 0 && (
+            <p className="line__meta">
+              <span className="badge badge-cancelled">Rupture de stock</span>{" "}
+              Toutes les variantes sont épuisées pour le moment.
+            </p>
+          )}
+
+          {variants.length === 0 ? (
+            <div className="empty-state">
+              <span className="empty-state__emoji" aria-hidden>
+                📦
+              </span>
+              <p className="empty-state__title">Aucune variante disponible</p>
+              <p className="empty-state__text">
+                Ce produit est publié mais aucune de ses variantes n&apos;est active : il
+                n&apos;est pas encore commandable. Revenez bientôt, ou parcourez les autres
+                produits du catalogue.
+              </p>
+              <div className="empty-state__actions">
+                <Link href="/products" className="btn btn-secondary">
+                  Voir le catalogue
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="card">
+              <h2 className="card__title">Choisir une variante</h2>
+              <AddToCartForm variants={variants} />
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 
-import { Money } from "@/ui/components/money";
+import { formatMoneyEur } from "@/domain/pricing";
 
 export type AddToCartFormProps = {
   variants: Array<{
@@ -64,29 +64,42 @@ export function AddToCartForm({ variants }: AddToCartFormProps) {
     }
   }
 
+  const soldOut = maxQty <= 0;
+  const selectedSoldOut = selected !== undefined && selected.available <= 0;
+
   return (
-    <form onSubmit={handleSubmit} style={{ marginTop: "2rem", display: "grid", gap: "1rem" }}>
-      <label style={{ display: "grid", gap: "0.25rem" }}>
-        <span>Variante</span>
+    <form onSubmit={handleSubmit} className="form-grid">
+      <label className={selectedSoldOut ? "form-field form-field--invalid" : "form-field"}>
+        <span className="form-field__label">
+          Variante <span className="form-field__req">*</span>
+        </span>
         <select
           name="variantId"
           required
           value={variantId}
           onChange={(e) => setVariantId(e.target.value)}
           disabled={submitting}
-          style={{ padding: "0.5rem", border: "1px solid #ccc", borderRadius: 6 }}
         >
           {variants.map((v) => (
             <option key={v.id} value={v.id} disabled={v.available <= 0}>
-              {v.name} — {new Intl.NumberFormat("fr-FR", { style: "currency", currency: "EUR" }).format(v.priceCents / 100)}
+              {v.name} — {formatMoneyEur(v.priceCents)}
               {v.available <= 0 ? " (rupture)" : ""}
             </option>
           ))}
         </select>
+        {selectedSoldOut ? (
+          <p className="form-field__error">
+            Cette variante est en rupture de stock : choisissez-en une autre dans la liste.
+          </p>
+        ) : (
+          <p className="form-field__hint">
+            Les variantes en rupture restent visibles mais ne sont pas sélectionnables.
+          </p>
+        )}
       </label>
 
-      <label style={{ display: "grid", gap: "0.25rem", maxWidth: 160 }}>
-        <span>Quantité</span>
+      <label className="form-field form-field--narrow">
+        <span className="form-field__label">Quantité</span>
         <input
           type="number"
           name="quantity"
@@ -95,44 +108,33 @@ export function AddToCartForm({ variants }: AddToCartFormProps) {
           value={quantity}
           onChange={(e) => setQuantity(Math.max(1, Number.parseInt(e.target.value, 10) || 1))}
           required
-          disabled={submitting || maxQty <= 0}
-          style={{ padding: "0.5rem", border: "1px solid #ccc", borderRadius: 6 }}
+          disabled={submitting || soldOut}
         />
         {maxQty > 0 && maxQty < 10 && (
-          <span style={{ color: "#777", fontSize: "0.8rem" }}>Stock : {maxQty}</span>
+          <p className="form-field__hint">
+            Stock disponible : <span className="num">{maxQty}</span>
+          </p>
         )}
       </label>
 
       {error && (
-        <p role="alert" style={{ color: "#b00020", margin: 0, fontSize: "0.9rem" }}>
+        <p role="alert" className="form-feedback form-feedback--error">
           {error}
         </p>
       )}
       {success && (
-        <p role="status" style={{ color: "#1e7a36", margin: 0, fontSize: "0.9rem" }}>
+        <p role="status" className="form-feedback form-feedback--ok">
           {success}
         </p>
       )}
 
-      <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-        <button
-          type="submit"
-          disabled={submitting || maxQty <= 0}
-          style={{
-            padding: "0.75rem 1rem",
-            background: maxQty <= 0 ? "#999" : "#111",
-            color: "#fff",
-            border: 0,
-            borderRadius: 6,
-            cursor: maxQty <= 0 ? "not-allowed" : submitting ? "wait" : "pointer",
-            width: "fit-content",
-          }}
-        >
-          {maxQty <= 0 ? "Rupture de stock" : submitting ? "Ajout…" : "Ajouter au panier"}
+      <div className="form-actions">
+        <button type="submit" className="btn btn-primary" disabled={submitting || soldOut}>
+          {soldOut ? "Rupture de stock" : submitting ? "Ajout…" : "Ajouter au panier"}
         </button>
-        {selected && maxQty > 0 && (
-          <span style={{ color: "#666", fontSize: "0.9rem" }}>
-            <Money cents={selected.priceCents * quantity} />
+        {selected && !soldOut && (
+          <span className="muted small">
+            Total : <span className="money">{formatMoneyEur(selected.priceCents * quantity)}</span>
           </span>
         )}
       </div>
