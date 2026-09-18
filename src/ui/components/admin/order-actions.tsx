@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
-import { canMarkPaid, canMarkShipped } from "@/domain/order-actions";
+import { canMarkPaid, canMarkShipped, canRefund } from "@/domain/order-actions";
 import type { OrderStatus } from "@prisma/client";
 
 /**
@@ -44,6 +44,7 @@ export function OrderActions({
 
   const showMarkPaid = canMarkPaid({ status, paymentProvider });
   const showMarkShipped = canMarkShipped({ status });
+  const showRefund = canRefund({ status });
 
   async function post(url: string, body?: Record<string, string>): Promise<void> {
     setBusy(true);
@@ -63,9 +64,11 @@ export function OrderActions({
       }
       setDone(
         data.message ??
-          (data.status === "SHIPPED"
-            ? `Commande ${number} marquée expédiée${data.trackingNo ? ` (suivi ${data.trackingNo})` : ""}.`
-            : `Commande ${number} marquée payée.`),
+          (data.status === "REFUNDED"
+            ? `Commande ${number} remboursée. Le stock des articles a été remis en vente.`
+            : data.status === "SHIPPED"
+              ? `Commande ${number} marquée expédiée${data.trackingNo ? ` (suivi ${data.trackingNo})` : ""}.`
+              : `Commande ${number} marquée payée.`),
       );
       setBusy(false);
       router.refresh();
@@ -95,6 +98,21 @@ export function OrderActions({
     );
   }
 
+  function onRefund(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const reason = String(form.get("reason") ?? "").trim();
+    // Confirmation explicite : un remboursement sort de l'argent et remet le
+    // stock. Un clic accidentel coûterait un avoir à re-facturer.
+    const ok = window.confirm(
+      `Rembourser intégralement la commande ${number} ?\n\n` +
+        "La commande passera en « Remboursée », le paiement sera annulé chez le " +
+        "prestataire et le stock des articles sera remis en vente.",
+    );
+    if (!ok) return;
+    void post(`/api/admin/orders/${orderId}/refund`, reason ? { reason } : undefined);
+  }
+
   if (done) {
     return (
       <div className="notice" role="status">
@@ -104,7 +122,7 @@ export function OrderActions({
     );
   }
 
-  if (!showMarkPaid && !showMarkShipped) {
+  if (!showMarkPaid && !showMarkShipped && !showRefund) {
     return (
       <p className="admin-muted">
         Aucune action manuelle n&apos;est disponible pour une commande au statut
@@ -162,6 +180,32 @@ export function OrderActions({
           <div className="form-actions">
             <button type="submit" className="btn btn-primary" disabled={busy}>
               {busy ? "Enregistrement…" : "Marquer comme expédiée"}
+            </button>
+          </div>
+        </form>
+      ) : null}
+
+      {showRefund ? (
+        <form onSubmit={onRefund} className="admin-stack">
+          <p className="form-field__hint">
+            Rembourse intégralement la commande : le prestataire annule le paiement,
+            la commande passe en « Remboursée » et le stock des articles repart en
+            vente. Pour un virement bancaire, le remboursement est à effectuer
+            manuellement de votre côté.
+          </p>
+          <label className="form-field">
+            <span className="form-field__label">Motif (optionnel)</span>
+            <input
+              type="text"
+              name="reason"
+              maxLength={200}
+              placeholder="Ex. article retourné, erreur de commande"
+              autoComplete="off"
+            />
+          </label>
+          <div className="form-actions">
+            <button type="submit" className="btn btn-secondary" disabled={busy}>
+              {busy ? "Remboursement…" : "Rembourser la commande"}
             </button>
           </div>
         </form>

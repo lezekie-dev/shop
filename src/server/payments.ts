@@ -290,3 +290,123 @@ export async function findOrderIdByPaymentRef(
   });
   return payment?.orderId ?? null;
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Remboursement
+// ─────────────────────────────────────────────────────────────────────
+
+export type RefundOrderResult = {
+  orderId: string;
+  orderStatus: OrderStatus;
+  paymentStatus: PaymentStatus;
+  /** true = la commande était déjà REFUNDED, aucune écriture faite. */
+  idempotent: boolean;
+  /** true = le stock des articles a été ré-incrémenté. */
+  stockRestored: boolean;
+};
+
+/**
+ * Répercute un remboursement déjà exécuté chez le PSP.
+ *
+ * Séparé de l'appel PSP (`PaymentProvider.refund`) volontairement : le PSP est
+ * la source de vérité pour l'argent, la base pour l'état de la commande. Si le
+ * PSP refuse, on n'écrit rien ; si le PSP accepte et que l'écriture échoue, on
+ * a un décalage borné que l'audit log permet de réconcilier.
+ *
+ * Effets :
+ *   - Order   → REFUNDED (+ cancelledAt comme horodatage de clôture)
+ *   - Payment → REFUNDED
+ *   - Stock   → `quantity += item.quantity` (la marchandise revient en stock)
+ *
+ * Le stock n'est ré-incrémenté que si la commande était réellement PAID :
+ * rembourser une commande jamais payée n'a pas décrémenté de stock.
+ *
+ * Idempotent : rejouer le remboursement d'une commande déjà REFUNDED ne fait
+ * rien et ne double surtout pas le stock.
+ */
+export async function refundOrder(
+  orderId: string,
+  input: {
+    amountCents: number;
+    providerRef: string | null;
+    refundRef: string;
+    reason: string | null;
+  },
+): Promise<RefundOrderResult> {
+  return prisma.$transaction(async (tx): Promise<RefundOrderResult> => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { items: true, payments: { orderBy: { createdAt: "desc" } } },
+    });
+    if (!order) {
+      throw new PaymentError(`Order introuvable: ${orderId}`, "ORDER_NOT_FOUND");
+    }
+
+    const payment = input.providerRef
+      ? order.payments.find((p) => p.providerRef === input.providerRef)
+      : order.payments[0];
+    if (!payment) {
+      throw new PaymentError(
+        `Payment introuvable pour Order ${orderId} (providerRef=${input.providerRef ?? "<dernier>"})`,
+        "PAYMENT_NOT_FOUND",
+      );
+    }
+
+    // Déjà remboursée : le PSP a pu rejouer la demande. Aucune écriture, et
+    // surtout aucun second crédit de stock.
+    if (order.status === "REFUNDED") {
+      return {
+        orderId,
+        orderStatus: "REFUNDED" satisfies OrderStatus,
+        paymentStatus: payment.status,
+        idempotent: true,
+        stockRestored: false,
+      };
+    }
+
+    // On ne rembourse que ce qui a été encaissé. CANCELLED / PENDING_PAYMENT
+    // n'ont pas de mouvement d'argent à annuler côté commande.
+    if (order.status !== "PAID" && order.status !== "PREPARING" && order.status !== "SHIPPED") {
+      throw new PaymentError(
+        `Order ${orderId} ne peut pas être remboursée depuis ${order.status} (seules PAID, PREPARING et SHIPPED le permettent)`,
+        "INVALID_TRANSITION",
+      );
+    }
+
+    // Le stock n'est revenu que si la commande avait été payée (c'est le
+    // passage à PAID qui avait décrémenté `quantity`).
+    for (const item of order.items) {
+      const stock = await tx.stock.findUnique({ where: { variantId: item.variantId } });
+      if (!stock) continue;
+      await tx.stock.update({
+        where: { variantId: item.variantId },
+        data: { quantity: stock.quantity + item.quantity },
+      });
+    }
+
+    await tx.order.update({
+      where: { id: orderId },
+      data: { status: "REFUNDED", cancelledAt: new Date() },
+    });
+    await tx.payment.update({
+      where: { id: payment.id },
+      data: {
+        status: "REFUNDED",
+        rawPayload: {
+          refundRef: input.refundRef,
+          amountCents: input.amountCents,
+          reason: input.reason,
+          refundedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    return {
+      orderId,
+      orderStatus: "REFUNDED" satisfies OrderStatus,
+      paymentStatus: "REFUNDED" satisfies PaymentStatus,
+      idempotent: false,
+      stockRestored: true,
+    };
+  });
+}

@@ -23,3 +23,15 @@ export function canMarkPaid(order: {
 export function canMarkShipped(order: { status: OrderStatus }): boolean {
   return order.status === "PAID" || order.status === "PREPARING";
 }
+
+/**
+ * Miroir exact de la garde de `POST /api/admin/orders/[id]/refund` et de
+ * `refundOrder` : on ne rembourse que ce qui a été encaissé. Un bouton
+ * « rembourser » sur une commande PENDING_PAYMENT renverrait 409 — donc on ne
+ * l'affiche pas.
+ */
+export function canRefund(order: { status: OrderStatus }): boolean {
+  return (
+    order.status === "PAID" || order.status === "PREPARING" || order.status === "SHIPPED"
+  );
+}
