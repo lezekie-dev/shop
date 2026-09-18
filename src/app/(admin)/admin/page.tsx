@@ -144,13 +144,12 @@ export default async function AdminDashboardPage() {
             />
           </section>
 
-          <div className="admin-columns enter enter-3">
-            <section className="admin-section">
-              <div className="admin-section__head">
-                <h2 className="admin-section__title">Commandes récentes</h2>
-                <Link href="/admin/orders">Tout voir →</Link>
-              </div>
-              <DataTable
+          <section className="admin-section enter enter-3">
+            <div className="admin-section__head">
+              <h2 className="admin-section__title">Commandes récentes</h2>
+              <Link href="/admin/orders">Tout voir →</Link>
+            </div>
+            <DataTable
                 caption="Les 8 commandes les plus récentes"
                 rows={data.recentOrders}
                 getRowKey={(row) => row.id}
@@ -225,10 +224,10 @@ export default async function AdminDashboardPage() {
               />
             </section>
 
+          <div className="admin-columns enter enter-4">
             <StockAlertsSection alerts={data.stockAlerts} />
-          </div>
 
-          <section className="admin-section enter enter-4">
+          <section className="admin-section">
             <div className="admin-section__head">
               <h2 className="admin-section__title">Méthodes de paiement ({data.windowDays} j)</h2>
               <span className="admin-muted">
@@ -288,6 +287,7 @@ export default async function AdminDashboardPage() {
               </ul>
             )}
           </section>
+          </div>
         </>
       )}
     </div>
