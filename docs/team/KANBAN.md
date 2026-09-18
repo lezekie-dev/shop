@@ -1,16 +1,39 @@
-# Kanban — Projet Shop (V1 globale)
+# Kanban — Projet Shop
 
-> Mis à jour en continu par le Chief of Staff. Source de vérité de l'avancement.
-> **Statut du board : voir la date sur chaque ligne. Une carte n'est « Terminé »
-> que si ses tests passent et sont vérifiés, jamais parce que le code est écrit.**
+> Tenu par le **Chief of Staff**. C'est la source de vérité de l'avancement : qui
+> fait quoi, où ça en est, et sur quelle preuve.
+>
+> **Règle d'or** : une carte passe en ✅ uniquement sur **preuve d'exécution**
+> (tests verts + contrôle réel en production pour une carte visible). Jamais
+> parce que le code est écrit, jamais parce qu'un agent l'affirme.
 
-Légende : ✅ terminé et vérifié · 🟡 à vérifier en QA · 🔵 en cours · ⚪ backlog
+Légende : ✅ terminé et vérifié · 🟠 code livré, en vérification · 🔵 en cours · ⚪ backlog
+
+---
+
+## L'équipe
+
+| Rôle | Qui | Responsabilité | Sur quoi il ne décide pas |
+|---|---|---|---|
+| **Chief of Staff** | moi | Ordonnancement, schéma Prisma, vérification, commits, arbitrages techniques | Le périmètre produit (c'est le PO) |
+| **PO** | agent `opencode` | Priorisation, critères d'acceptation, périmètre et hors-périmètre, KPIs | L'implémentation |
+| **Équipe Backend** | agent par chantier | Logique métier, API, base de données | Le périmètre, le schéma |
+| **Équipe Frontend** | agent par chantier | Pages, composants, design system | Le périmètre, le schéma |
+| **Équipe QA/Sécurité** | agent dédié | Tests, audits, Recherche de failles | Le périmètre |
+
+### Règles de fonctionnement de l'équipe
+
+1. **Le schéma Prisma n'est modifié que par le Chief of Staff, seul, avant de lancer une vague.** Trois agents sur ce fichier = trois migrations en conflit. Vérifié à chaque vague : `git diff prisma/schema.prisma` doit être vide.
+2. **Un chantier = des fichiers disjoints.** Deux agents ne touchent jamais le même fichier dans la même vague.
+3. **Aucun agent ne commit.** Le Chief of Staff commite après vérification — des commits concurrents cassent l'index git.
+4. **Le PO cadre chaque vague avant qu'elle démarre** et rend un document de cadrage avec critères d'acceptation.
+5. **Une carte non vérifiée reste en 🟠**, même si l'agent la déclare terminée.
 
 ---
 
 ## ✅ Terminé et vérifié
 
-### MVP (en ligne sur shop.app-lezekie.dev)
+### MVP — en ligne sur shop.app-lezekie.dev
 
 | Carte | Preuve |
 |---|---|
@@ -20,10 +43,11 @@ Légende : ✅ terminé et vérifié · 🟡 à vérifier en QA · 🔵 en cours
 | Paiements : Mobile Money, virement, mock | test prod : `REFUNDED`, idempotent |
 | Back-office : dashboard, commandes, produits, stock, emails | 11/11 contrôles visuels |
 | Remboursement complet | stock restauré, vérifié en prod |
-| Sécurité : accès commande par jeton | 401/404/404/200 vérifié en prod |
+| Sécurité : accès commande par jeton 256 bits | 401/404/404/200 vérifié en prod |
 | Sécurité : rate limiting connexion admin | 401 ×5 puis **429**, vérifié en prod |
 | Refonte design (identité, icônes SVG, finitions d'achat) | 9/9 pages, 0 erreur JS |
-| Push GitHub `lezekie-dev/shop` | `8acba25`, `.env` protégé |
+| Packshots produit cohérents (style unifié, contraste) | script versionné `scripts/packshots.mjs` |
+| Push GitHub `lezekie-dev/shop` | `c77f106`, `.env` protégé |
 
 ### Fondation V1
 
@@ -31,68 +55,43 @@ Légende : ✅ terminé et vérifié · 🟡 à vérifier en QA · 🔵 en cours
 |---|---|
 | Schéma Prisma étendu (19 → 29 tables) | migration `20260918122329_v1_features` |
 | Rôles `ADMIN`/`STAFF` | enum appliqué en base |
-| Vérification d'intégrité : 0 régression | tsc 0, **210/210 vitest** |
+| 0 régression après extension du schéma | tsc 0, 210/210 vitest |
+
+### Vague 1 — 362/362 vitest, tsc 0, commit `8e37e1a`
+
+Trois chantiers en parallèle, puis vérifiés et réparés par le Chief of Staff.
+
+| Carte | Équipe | Preuve |
+|---|---|---|
+| Inscription / connexion / déconnexion client | Backend | sessions dédiées, table séparée de l'admin |
+| Rattachement d'un compte à une fiche invité existante | Backend | historique de commandes conservé |
+| Mes commandes + détail + suivi d'expédition | Backend + Frontend | 33 tests du fichier au vert |
+| Carnet d'adresses (défaut, suppression protégée) | Backend | refus 409 si adresse citée par une commande |
+| Recherche par mot-clé (nom + description) | Backend | renvoie « Sac tote en canvas » en prod |
+| Pages catégorie + tri + pagination 12 | Frontend | 14/14 contrôles visuels sur 2 viewports |
+| Rôles staff + gardes serveur + audit | Backend | STAFF ne peut pas accéder à /admin/users |
+| 2FA TOTP (RFC 6238, sans dépendance) | Backend | 31/31 tests, vecteurs officiels de l'annexe B |
+| **Cause racine du blocage d'agent** : `resetDb` (29 TRUNCATE parallèles) | Chief of Staff | 33 s → **1,3 s** par test, relevé dans `pg_locks` |
 
 ---
 
-## ✅ Vague 1 — livrée et vérifiée (362/362 vitest, tsc 0)
+## 🟠 Livré, en cours de vérification — lot 2A + 2C
 
-> Trois chantiers menés en parallèle par des équipes sur fichiers disjoints,
-> puis vérifiés et réparés par le Chief of Staff. Commit `8e37e1a`.
+> Code sur le disque, agents en fin de course. **Rien n'est en ✅ tant que je n'ai
+> pas relancé la suite complète et contrôlé les parcours moi-même.**
 
-### Chantier A — Espace client
-
-| Carte | Livrable |
-|---|---|
-| Inscription (rattachement à un compte invité existant) | `src/server/customer-account.ts` |
-| Connexion / déconnexion | `src/lib/customer-auth.ts`, `/compte/connexion` |
-| Mes commandes | `/compte/commandes` |
-| Détail commande + suivi d'expédition | `src/ui/components/order-progress.tsx` |
-| Carnet d'adresses | `src/ui/components/customer/address-book.tsx` |
-| (résolu) l'agent était bloqué par la lenteur de `resetDb` — cause trouvée et corrigée | 33 s → 1,3 s par test |
-
-### Chantier B — Recherche & catalogue
-
-| Carte | Livrable |
-|---|---|
-| Recherche par mot-clé (nom + description) | `src/server/catalog.ts` |
-| Pages catégorie `/categorie/[slug]` | `src/app/(shop)/categorie/` |
-| Tri (nouveauté, prix ↑, prix ↓) | `src/domain/catalog.ts` |
-| Pagination 12/page | `src/ui/components/catalog-pagination.tsx` |
-
-### Chantier C — Rôles, staff & 2FA
-
-| Carte | Livrable |
-|---|---|
-| Gestion des utilisateurs `/admin/users` | `src/server/admin-users.ts` |
-| 2FA TOTP (RFC 6238, sans dépendance) | `src/server/totp.ts` |
-| Gardes d'autorisation serveur | `src/server/guards.ts`, `src/domain/access.ts` |
-| Journal d'audit des actions sensibles | `src/server/audit-log.ts` |
-| Sécurité du compte `/admin/security` | `src/server/admin-2fa.ts` |
-
----
-
-## 🔵 Vague 2 — cadrée par le PO (`docs/team/PO-BRIEF-V2.md`)
-
-Le PO a priorisé, écrit 67 critères d'acceptation, tranché ce qui sort du
-périmètre et listé 7 décisions à arbitrer. Séquencement en 4 lots.
-
-| Lot | Carte | Valeur | Décision du PO |
+| Carte | Chantier | Équipe | État |
 |---|---|---|---|
-| 2A | Réconciliation des paiements `PENDING` (I) | 5 | IN — en premier, c'est un filet de sécurité |
-| 2A | Observabilité + sauvegardes (J) | 4 | IN — un chantier qui protège l'argent passe avant ceux qui le font circuler |
-| 2B | Codes promo (E) | 4 | IN réduit — 1 code/commande, pas de cumul, pas de ciblage |
-| 2B | Avis clients modérés (F) | 4 | IN réduit — rattachés à une commande, modération obligatoire |
-| 2C | Téléversement d'images produits (H) | 5 | IN — le plus gros frein opérationnel pour Fatou |
-| 2D | Multi-devise EUR/XAF (K) | 4 | IN réduit, **sacrifiable** si 2A–2C dérapent |
-| — | Favoris / wishlist (G) | 2 | **OUT** → vague 3 : le panier est déjà persistant, et sans canal de relance un favori n'est qu'un signet |
-
-**Conditions d'entrée du PO — les 3 satisfaites le 18/09 :**
-1. ✅ Vague 1 verte sur preuve (362/362) — la carte que le PO refusait de laisser en 🟡 est close.
-2. ✅ Rate limiting **vérifié en production** : 401 ×5 puis 429. `KNOWN-ISSUES.md` affirmait le contraire, il était périmé — corrigé.
-3. ✅ Boutique en ligne et répondante (accueil, catalogue, recherche → 200).
-
-**7 décisions à arbitrer par le propriétaire** (§7 du brief PO) : cumul de codes, post-modération des avis, libération d'un code après remboursement, CA multi-devises, saisie manuelle des prix XAF, sort d'un paiement bloqué, stockage des photos. Sans réponse, l'avis du PO s'applique par défaut et reste inscrit comme « à confirmer ».
+| Réconciliation des paiements bloqués | I | Backend | 🟠 code livré, tests en cours d'écriture |
+| Route cron protégée par `CRON_SECRET` | I | Backend | 🟠 |
+| Page `/admin/paiements` (compteur PENDING > 24 h) | I | Backend + Frontend | 🟠 |
+| `/api/health` avec 503 si base morte | J | Backend | 🟠 |
+| Page `/admin/taches` (20 derniers `JobRun`) | J | Backend + Frontend | 🟠 |
+| Script de sauvegarde DB + purge et rétention | J | Backend | 🟠 |
+| **Restauration réellement testée** (exigence du PO) | J | Backend | 🔵 l'agent teste la restauration sur une base jetable |
+| Téléversement d'images (API + validation du contenu réel) | H | Backend | 🟠 |
+| Réordonnancement / suppression des visuels | H | Backend + Frontend | 🟠 |
+| Interface admin de gestion des photos | H | Frontend | 🟠 |
 
 ---
 
@@ -100,26 +99,32 @@ périmètre et listé 7 décisions à arbitrer. Séquencement en 4 lots.
 
 | Carte | Pourquoi pas maintenant |
 |---|---|
-| Photos produits réelles | Nécessite le marchand, pas du code |
+| Favoris / wishlist | **Écartée par le PO** : le panier est déjà persistant, et sans canal de relance un favori n'est qu'un signet. Coût de report nul, on la garde pour la vague 3. |
+| Codes promo (E) | Lot 2B, cadré par le PO : 1 code/commande, pas de cumul, pas de ciblage |
+| Avis clients modérés (F) | Lot 2B, rattachés à une commande, modération obligatoire |
+| Multi-devise EUR/XAF (K) | Lot 2D, **sacrifiable** : le franc CFA est arrimé à l'euro (taux fixe, aucune API à brancher) |
+| Photos produits réelles | Le lot 2C en cours le rend techniquement possible ; le contenu viendra du marchand |
 | Pages légales (CGV, mentions, confidentialité) | Décision juridique, pas technique |
 | 2FA obligatoire pour les ADMIN | À décider une fois la 2FA optionnelle validée |
-| NPS post-achat J+7 (KPI K5 du brief PO) | Dépend d'un vrai envoi d'email |
-| Envoi d'emails réel (Resend/SMTP) | Bloqué : aucun compte tiers (décision) |
+| Rate limiting sur le checkout | Repéré par le PO, pas encore priorisé |
 
 ---
 
-## Règles de fonctionnement de l'équipe
+## Décisions en attente du propriétaire
 
-1. **`schema.prisma` ne se modifie que par le Chief of Staff, seul et avant de
-   lancer une vague.** Trois agents sur ce fichier = trois migrations en conflit.
-2. **Un chantier = des fichiers disjoints.** Deux agents ne touchent jamais le
-   même fichier dans la même vague.
-3. **Aucun agent ne commit.** Le Chief of Staff commite, après vérification.
-   Des commits concurrents cassent l'index git.
-4. **Une carte passe en ✅ uniquement sur preuve d'exécution** : tests verts,
-   `tsc` 0, et pour une carte visible, un contrôle en production.
-5. **Le PO cadre chaque vague** : priorisation, critères d'acceptation, et
-   arbitrage de ce qui sort du périmètre.
+Le PO a remonté **7 arbitrages** (voir `docs/team/PO-BRIEF-V2.md` §7). Sans réponse, son avis s'applique par défaut et reste inscrit « décidée par défaut, à confirmer ».
+
+| # | Question | Avis du PO |
+|---|---|---|
+| D1 | Un code promo peut-il se cumuler avec un autre ? | Non, un seul par commande |
+| D2 | Un avis est-il publié avant modération ? | Non, `PENDING` obligatoire |
+| D3 | Une commande remboursée libère-t-elle l'usage du code ? | Oui (la vente n'a rien rapporté) |
+| D4 | Comment afficher un CA sur deux devises ? | Ventilation par devise, jamais de total fusionné |
+| D5 | Les prix XAF sont-ils saisis ou convertis ? | Saisis à la main, conversion en repli seulement |
+| D6 | Que fait l'app si un paiement reste bloqué ? | **Elle ne décide pas** : reste `PENDING`, remonte en tête, stock réservé conservé |
+| D7 | Où vivent les photos produits ? | Volume local du serveur, sauvegardé avec la base |
+
+---
 
 ## Journal
 
@@ -127,5 +132,10 @@ périmètre et listé 7 décisions à arbitrer. Séquencement en 4 lots.
 |---|---|
 | 18/09 | MVP livré, sécurisé, design refait, poussé sur GitHub |
 | 18/09 | Schéma V1 consolidé (29 tables), 210/210 verts |
-| 18/09 | Vague 1 lancée : 3 chantiers parallèles (espace client, catalogue, rôles+2FA) |
-| 18/09 | ⚠️ Agent « espace client » en timeout (30 min) sur un test cassé — code livré, test à reprendre |
+| 18/09 | Vague 1 lancée : 3 chantiers parallèles |
+| 18/09 | ⚠️ Équipe « espace client » en timeout (30 min) — cause : lenteur de `resetDb`, corrigée (33 s → 1,3 s) |
+| 18/09 | Vague 1 ✅ vérifiée : 362/362 vitest, commit `8e37e1a` |
+| 18/09 | PO-BRIEF-V2 livré : 382 lignes, 67 critères d'acceptation, 7 arbitrages |
+| 18/09 | Les 3 conditions d'entrée du PO satisfaites, dont le rate limiting **prouvé en prod** (401×5 → 429) |
+| 18/09 | Packshots unifiés et contraste renforcé — défaut relevé par audit visuel |
+| 18/09 | Lot 2A + 2C lancé : 3 équipes (réconciliation, observabilité, téléversement) |

@@ -1,0 +1,243 @@
+<html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}
+body{font:14px/1.5 ui-sans-serif,system-ui,sans-serif;background:#faf6ef;color:#4a3428;margin:0;padding:34px 30px 40px}
+h1{font-family:Georgia,"Times New Roman",serif;font-size:2.1rem;letter-spacing:-.02em;color:#2a1810;margin:0 0 4px}
+.sub{color:#8a7264;font-size:13px;margin:0 0 20px}
+.rule{background:#f6efe1;border:1.5px solid #e8dcc4;border-radius:10px;padding:12px 16px;margin-bottom:22px;font-size:13px}
+.rule b{color:#2a1810}
+h2{font-family:Georgia,serif;font-size:1.15rem;color:#2a1810;margin:26px 0 10px;text-transform:uppercase;letter-spacing:.06em;font-size:.8rem}
+.board{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start}
+.col{background:#fff;border:1.5px solid #e8dcc4;border-radius:12px;padding:12px;min-width:0}
+.col__head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.col__label{font-weight:700;color:#2a1810;font-size:13.5px}
+.col__count{background:#f6efe1;color:#2a1810;border-radius:99px;padding:1px 9px;font-size:12px;font-weight:700}
+.col__hint{color:#8a7264;font-size:11px;margin:2px 0 10px;font-style:italic}
+.col__wip{color:#c2410c;font-size:10.5px;margin:0 0 10px;font-weight:600}
+.card{border:1px solid #e8dcc4;border-radius:9px;padding:9px 10px;margin-bottom:8px;background:#faf6ef}
+.card__top{display:flex;align-items:center;gap:6px;justify-content:space-between;margin-bottom:5px}
+.badge{color:#fffaf5;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px;letter-spacing:.04em}
+.team{font-size:10.5px;color:#8a7264;text-align:right}
+.card__title{font-weight:600;color:#2a1810;margin:0 0 3px;font-size:13px}
+.card__proof{color:#8a7264;font-size:11.5px;margin:0}
+table{width:100%;border-collapse:collapse;background:#fff;border:1.5px solid #e8dcc4;border-radius:10px;overflow:hidden;font-size:13px}
+th{background:#c2410c;color:#fffaf5;text-align:left;padding:8px 11px;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+td{padding:8px 11px;border-bottom:1px solid #e8dcc4}
+td.muted{color:#8a7264}
+td.accent{color:#c2410c;font-weight:600}
+td.mono{font-family:ui-monospace,monospace;font-size:12px;color:#8a7264}
+tr:last-child td{border-bottom:0}
+</style></head><body>
+<h1>Kanban — Projet Shop</h1>
+<p class="sub">Mis à jour le 2026-09-18 · Chief of Staff · <strong>29 cartes</strong></p>
+<div class="rule">
+  <b>Règle d'or :</b> une carte passe en « Terminé » uniquement sur <b>preuve d'exécution</b> — tests verts et contrôle réel en production pour une carte visible.
+  Jamais parce que le code est écrit, jamais parce qu'un agent l'affirme.
+</div>
+<h2>L'équipe</h2>
+<table><tr><th>Rôle</th><th>Qui</th><th>Périmètre</th></tr><tr>
+  <td><strong>Chief of Staff</strong></td><td>Hermes</td><td class="muted">ordonnancement, schéma Prisma, vérification, commits</td>
+</tr><tr>
+  <td><strong>PO</strong></td><td>agent opencode</td><td class="muted">périmètre, critères d'acceptation, priorisation</td>
+</tr><tr>
+  <td><strong>Backend</strong></td><td>1 agent / chantier</td><td class="muted">logique métier, API, base de données</td>
+</tr><tr>
+  <td><strong>Frontend</strong></td><td>1 agent / chantier</td><td class="muted">pages, composants, design system</td>
+</tr><tr>
+  <td><strong>QA / Sécurité</strong></td><td>agent dédié</td><td class="muted">tests, audits, recherche de failles</td>
+</tr></table>
+<h2>Le board</h2>
+<div class="board"><div class="col">
+    <div class="col__head">
+      <span class="col__label">Backlog</span>
+      <span class="col__count">6</span>
+    </div>
+    <p class="col__hint">identifié, non planifié</p>
+    
+    <div class="card">
+    <div class="card__top"><span class="badge" style="background:#7c3aed">E</span>
+      <span class="team">lot 2B</span></div>
+    <p class="card__title">Codes promo (1/commande, pas de cumul)</p>
+    <p class="card__proof">cadré par le PO</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#be185d">F</span>
+      <span class="team">lot 2B</span></div>
+    <p class="card__title">Avis clients modérés (rattachés à une commande)</p>
+    <p class="card__proof">cadré par le PO</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#a16207">K</span>
+      <span class="team">lot 2D</span></div>
+    <p class="card__title">Multi-devise EUR/XAF (sacrifiable)</p>
+    <p class="card__proof">XAF arrimé à l'euro, aucune API</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#64748b">G</span>
+      <span class="team">vague 3</span></div>
+    <p class="card__title">Favoris / wishlist</p>
+    <p class="card__proof">écartée par le PO : sans canal de relance, un favori n'est qu'un signet</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#8a7264">—</span>
+      <span class="team">—</span></div>
+    <p class="card__title">Pages légales (CGV, mentions)</p>
+    <p class="card__proof">décision juridique</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#8a7264">—</span>
+      <span class="team">—</span></div>
+    <p class="card__title">Rate limiting sur le checkout</p>
+    <p class="card__proof">repéré par le PO</p>
+  </div>
+  </div><div class="col">
+    <div class="col__head">
+      <span class="col__label">En cours</span>
+      <span class="col__count">2</span>
+    </div>
+    <p class="col__hint">équipe au travail</p>
+    <p class="col__wip">max 3 chantiers en parallèle</p>
+    <div class="card">
+    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Restauration réellement testée (exigence PO)</p>
+    <p class="card__proof">test en cours sur base jetable</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#8a7264">—</span>
+      <span class="team">Chief of Staff</span></div>
+    <p class="card__title">Vérification finale de la suite complète</p>
+    <p class="card__proof">après retour des 3 équipes</p>
+  </div>
+  </div><div class="col">
+    <div class="col__head">
+      <span class="col__label">À vérifier</span>
+      <span class="col__count">9</span>
+    </div>
+    <p class="col__hint">code livré, non contrôlé</p>
+    <p class="col__wip">goulot : à vider avant la vague suivante</p>
+    <div class="card">
+    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Réconciliation des paiements bloqués</p>
+    <p class="card__proof">code livré — suite complète à relancer</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Route cron protégée par CRON_SECRET</p>
+    <p class="card__proof">code livré</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#b45309">I</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Page /admin/paiements</p>
+    <p class="card__proof">code livré</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">/api/health avec 503 si base morte</p>
+    <p class="card__proof">code livré</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Page /admin/taches (JobRun)</p>
+    <p class="card__proof">code livré</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0369a1">J</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Script de sauvegarde DB + rétention</p>
+    <p class="card__proof">code livré</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Téléversement d'images (contenu validé)</p>
+    <p class="card__proof">code livré</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Réordonnancement / suppression visuels</p>
+    <p class="card__proof">code livré</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#065f46">H</span>
+      <span class="team">Frontend</span></div>
+    <p class="card__title">Interface admin de gestion des photos</p>
+    <p class="card__proof">code livré</p>
+  </div>
+  </div><div class="col">
+    <div class="col__head">
+      <span class="col__label">Terminé</span>
+      <span class="col__count">12</span>
+    </div>
+    <p class="col__hint">vérifié sur preuve</p>
+    
+    <div class="card">
+    <div class="card__top"><span class="badge" style="background:#0f766e">MVP</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Catalogue, panier, checkout invité</p>
+    <p class="card__proof">12/12 contrôles visuels, 2/2 Playwright prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0f766e">MVP</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">3 paiements simulés + remboursement</p>
+    <p class="card__proof">REFUNDED idempotent, vérifié en prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#0f766e">MVP</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Back-office (dashboard, commandes, stock)</p>
+    <p class="card__proof">11/11 contrôles visuels</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#9a3412">SEC</span>
+      <span class="team">QA / Sécurité</span></div>
+    <p class="card__title">Accès commande par jeton 256 bits</p>
+    <p class="card__proof">401/404/404/200 vérifié en prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#9a3412">SEC</span>
+      <span class="team">QA / Sécurité</span></div>
+    <p class="card__title">Rate limiting connexion admin</p>
+    <p class="card__proof">401 ×5 puis 429, vérifié en prod</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#7c3aed">UI</span>
+      <span class="team">Frontend</span></div>
+    <p class="card__title">Refonte design (identité, icônes SVG)</p>
+    <p class="card__proof">9/9 pages, 0 erreur JS</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#7c3aed">UI</span>
+      <span class="team">Frontend</span></div>
+    <p class="card__title">Packshots produit cohérents</p>
+    <p class="card__proof">script versionné, contraste validé</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
+      <span class="team">Chief of Staff</span></div>
+    <p class="card__title">Schéma Prisma étendu (19 → 29 tables)</p>
+    <p class="card__proof">migration appliquée, 210/210 verts</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Espace client (comptes, commandes, adresses)</p>
+    <p class="card__proof">362/362 vitest</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
+      <span class="team">Backend + Frontend</span></div>
+    <p class="card__title">Recherche + catégories + tri + pagination</p>
+    <p class="card__proof">14/14 contrôles visuels</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
+      <span class="team">Backend</span></div>
+    <p class="card__title">Rôles staff + 2FA TOTP + audit</p>
+    <p class="card__proof">31/31 tests, vecteurs RFC 6238</p>
+  </div><div class="card">
+    <div class="card__top"><span class="badge" style="background:#1d4ed8">V1</span>
+      <span class="team">Chief of Staff</span></div>
+    <p class="card__title">Cause racine du blocage d'agent (resetDb)</p>
+    <p class="card__proof">33 s → 1,3 s par test</p>
+  </div>
+  </div></div>
+<h2>Décisions en attente du propriétaire</h2>
+<table><tr><th>#</th><th>Question</th><th>Avis du PO (appliqué par défaut)</th></tr><tr>
+  <td class="mono">D1</td><td>Cumul de codes promo ?</td><td class="accent">Non, un seul par commande</td>
+</tr><tr>
+  <td class="mono">D2</td><td>Avis publié avant modération ?</td><td class="accent">Non, PENDING obligatoire</td>
+</tr><tr>
+  <td class="mono">D3</td><td>Remboursement libère le code promo ?</td><td class="accent">Oui</td>
+</tr><tr>
+  <td class="mono">D4</td><td>CA sur deux devises ?</td><td class="accent">Ventilation par devise, jamais fusionné</td>
+</tr><tr>
+  <td class="mono">D5</td><td>Prix XAF saisis ou convertis ?</td><td class="accent">Saisis à la main, conversion en repli</td>
+</tr><tr>
+  <td class="mono">D6</td><td>Paiement bloqué au bout des tentatives ?</td><td class="accent">L'app ne décide pas — reste PENDING</td>
+</tr><tr>
+  <td class="mono">D7</td><td>Où vivent les photos ?</td><td class="accent">Volume local, sauvegardé avec la base</td>
+</tr></table>
+</body></html>

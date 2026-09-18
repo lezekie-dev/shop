@@ -1,0 +1,296 @@
+{
+  "updatedAt": "2026-09-18",
+  "columns": [
+    {
+      "id": "backlog",
+      "label": "Backlog",
+      "hint": "identifié, non planifié"
+    },
+    {
+      "id": "doing",
+      "label": "En cours",
+      "hint": "équipe au travail",
+      "wip": "max 3 chantiers en parallèle"
+    },
+    {
+      "id": "verify",
+      "label": "À vérifier",
+      "hint": "code livré, non contrôlé",
+      "wip": "goulot : à vider avant la vague suivante"
+    },
+    {
+      "id": "done",
+      "label": "Terminé",
+      "hint": "vérifié sur preuve"
+    }
+  ],
+  "team": [
+    {
+      "role": "Chief of Staff",
+      "who": "Hermes",
+      "scope": "ordonnancement, schéma Prisma, vérification, commits"
+    },
+    {
+      "role": "PO",
+      "who": "agent opencode",
+      "scope": "périmètre, critères d'acceptation, priorisation"
+    },
+    {
+      "role": "Backend",
+      "who": "1 agent / chantier",
+      "scope": "logique métier, API, base de données"
+    },
+    {
+      "role": "Frontend",
+      "who": "1 agent / chantier",
+      "scope": "pages, composants, design system"
+    },
+    {
+      "role": "QA / Sécurité",
+      "who": "agent dédié",
+      "scope": "tests, audits, recherche de failles"
+    }
+  ],
+  "cards": [
+    {
+      "col": "done",
+      "id": "MVP",
+      "title": "Catalogue, panier, checkout invité",
+      "team": "Backend + Frontend",
+      "proof": "12/12 contrôles visuels, 2/2 Playwright prod"
+    },
+    {
+      "col": "done",
+      "id": "MVP",
+      "title": "3 paiements simulés + remboursement",
+      "team": "Backend",
+      "proof": "REFUNDED idempotent, vérifié en prod"
+    },
+    {
+      "col": "done",
+      "id": "MVP",
+      "title": "Back-office (dashboard, commandes, stock)",
+      "team": "Backend + Frontend",
+      "proof": "11/11 contrôles visuels"
+    },
+    {
+      "col": "done",
+      "id": "SEC",
+      "title": "Accès commande par jeton 256 bits",
+      "team": "QA / Sécurité",
+      "proof": "401/404/404/200 vérifié en prod"
+    },
+    {
+      "col": "done",
+      "id": "SEC",
+      "title": "Rate limiting connexion admin",
+      "team": "QA / Sécurité",
+      "proof": "401 ×5 puis 429, vérifié en prod"
+    },
+    {
+      "col": "done",
+      "id": "UI",
+      "title": "Refonte design (identité, icônes SVG)",
+      "team": "Frontend",
+      "proof": "9/9 pages, 0 erreur JS"
+    },
+    {
+      "col": "done",
+      "id": "UI",
+      "title": "Packshots produit cohérents",
+      "team": "Frontend",
+      "proof": "script versionné, contraste validé"
+    },
+    {
+      "col": "done",
+      "id": "V1",
+      "title": "Schéma Prisma étendu (19 → 29 tables)",
+      "team": "Chief of Staff",
+      "proof": "migration appliquée, 210/210 verts"
+    },
+    {
+      "col": "done",
+      "id": "V1",
+      "title": "Espace client (comptes, commandes, adresses)",
+      "team": "Backend + Frontend",
+      "proof": "362/362 vitest"
+    },
+    {
+      "col": "done",
+      "id": "V1",
+      "title": "Recherche + catégories + tri + pagination",
+      "team": "Backend + Frontend",
+      "proof": "14/14 contrôles visuels"
+    },
+    {
+      "col": "done",
+      "id": "V1",
+      "title": "Rôles staff + 2FA TOTP + audit",
+      "team": "Backend",
+      "proof": "31/31 tests, vecteurs RFC 6238"
+    },
+    {
+      "col": "done",
+      "id": "V1",
+      "title": "Cause racine du blocage d'agent (resetDb)",
+      "team": "Chief of Staff",
+      "proof": "33 s → 1,3 s par test"
+    },
+    {
+      "col": "verify",
+      "id": "I",
+      "title": "Réconciliation des paiements bloqués",
+      "team": "Backend",
+      "proof": "code livré — suite complète à relancer"
+    },
+    {
+      "col": "verify",
+      "id": "I",
+      "title": "Route cron protégée par CRON_SECRET",
+      "team": "Backend",
+      "proof": "code livré"
+    },
+    {
+      "col": "verify",
+      "id": "I",
+      "title": "Page /admin/paiements",
+      "team": "Backend + Frontend",
+      "proof": "code livré"
+    },
+    {
+      "col": "verify",
+      "id": "J",
+      "title": "/api/health avec 503 si base morte",
+      "team": "Backend",
+      "proof": "code livré"
+    },
+    {
+      "col": "verify",
+      "id": "J",
+      "title": "Page /admin/taches (JobRun)",
+      "team": "Backend + Frontend",
+      "proof": "code livré"
+    },
+    {
+      "col": "verify",
+      "id": "J",
+      "title": "Script de sauvegarde DB + rétention",
+      "team": "Backend",
+      "proof": "code livré"
+    },
+    {
+      "col": "verify",
+      "id": "H",
+      "title": "Téléversement d'images (contenu validé)",
+      "team": "Backend",
+      "proof": "code livré"
+    },
+    {
+      "col": "verify",
+      "id": "H",
+      "title": "Réordonnancement / suppression visuels",
+      "team": "Backend + Frontend",
+      "proof": "code livré"
+    },
+    {
+      "col": "verify",
+      "id": "H",
+      "title": "Interface admin de gestion des photos",
+      "team": "Frontend",
+      "proof": "code livré"
+    },
+    {
+      "col": "doing",
+      "id": "J",
+      "title": "Restauration réellement testée (exigence PO)",
+      "team": "Backend",
+      "proof": "test en cours sur base jetable"
+    },
+    {
+      "col": "doing",
+      "id": "—",
+      "title": "Vérification finale de la suite complète",
+      "team": "Chief of Staff",
+      "proof": "après retour des 3 équipes"
+    },
+    {
+      "col": "backlog",
+      "id": "E",
+      "title": "Codes promo (1/commande, pas de cumul)",
+      "team": "lot 2B",
+      "proof": "cadré par le PO"
+    },
+    {
+      "col": "backlog",
+      "id": "F",
+      "title": "Avis clients modérés (rattachés à une commande)",
+      "team": "lot 2B",
+      "proof": "cadré par le PO"
+    },
+    {
+      "col": "backlog",
+      "id": "K",
+      "title": "Multi-devise EUR/XAF (sacrifiable)",
+      "team": "lot 2D",
+      "proof": "XAF arrimé à l'euro, aucune API"
+    },
+    {
+      "col": "backlog",
+      "id": "G",
+      "title": "Favoris / wishlist",
+      "team": "vague 3",
+      "proof": "écartée par le PO : sans canal de relance, un favori n'est qu'un signet"
+    },
+    {
+      "col": "backlog",
+      "id": "—",
+      "title": "Pages légales (CGV, mentions)",
+      "team": "—",
+      "proof": "décision juridique"
+    },
+    {
+      "col": "backlog",
+      "id": "—",
+      "title": "Rate limiting sur le checkout",
+      "team": "—",
+      "proof": "repéré par le PO"
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "q": "Cumul de codes promo ?",
+      "a": "Non, un seul par commande"
+    },
+    {
+      "id": "D2",
+      "q": "Avis publié avant modération ?",
+      "a": "Non, PENDING obligatoire"
+    },
+    {
+      "id": "D3",
+      "q": "Remboursement libère le code promo ?",
+      "a": "Oui"
+    },
+    {
+      "id": "D4",
+      "q": "CA sur deux devises ?",
+      "a": "Ventilation par devise, jamais fusionné"
+    },
+    {
+      "id": "D5",
+      "q": "Prix XAF saisis ou convertis ?",
+      "a": "Saisis à la main, conversion en repli"
+    },
+    {
+      "id": "D6",
+      "q": "Paiement bloqué au bout des tentatives ?",
+      "a": "L'app ne décide pas — reste PENDING"
+    },
+    {
+      "id": "D7",
+      "q": "Où vivent les photos ?",
+      "a": "Volume local, sauvegardé avec la base"
+    }
+  ]
+}
