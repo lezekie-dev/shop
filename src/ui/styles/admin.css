@@ -16,7 +16,7 @@
   border-bottom: 1.5px solid var(--border-soft);
 }
 .admin-header__inner {
-  max-width: var(--container);
+  max-width: var(--container-admin);
   margin: 0 auto;
   padding: var(--sp-4);
   display: flex;
@@ -56,13 +56,19 @@
 
 /* ── Corps : sidebar desktop / barre scrollable mobile ── */
 .admin-layout {
-  max-width: var(--container);
+  max-width: var(--container-admin);
   margin: 0 auto;
   padding: var(--sp-5) var(--sp-4) var(--sp-8);
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr);
   gap: var(--sp-6);
   align-items: start;
+}
+
+/* Le conteneur de contenu doit pouvoir rétrécir sous la largeur de son
+   contenu, sinon les tableaux larges élargissent la piste de la grille. */
+.admin-main {
+  min-width: 0;
 }
 
 .admin-nav__list {
@@ -133,17 +139,35 @@
 .admin-page {
   display: grid;
   gap: var(--sp-6);
+  /* Un item de grid a `min-width: auto` par défaut : sans cette ligne, un
+     enfant large (tableau à 7 colonnes) élargit la piste au lieu de scroller
+     dans `.data-table__wrap`, et toute la page déborde horizontalement. */
+  min-width: 0;
 }
+
+/* Chaque enfant direct est un grid item : sans min-width:0, il refuse de
+   rétrécir sous sa largeur intrinsèque et déborde la page sur mobile
+   (mesuré : en-tête de commandes à 1031px dans un conteneur de 288px). */
+.admin-page > * {
+  min-width: 0;
+}
+
 .admin-page__head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--sp-4);
   flex-wrap: wrap;
+  min-width: 0;
+}
+.admin-page__head > * {
+  min-width: 0;
 }
 .admin-page__title {
   margin: 0;
   font-size: var(--fs-display);
+  /* Un titre long se coupe plutôt que d'élargir la page (ex. « Commandes »). */
+  overflow-wrap: break-word;
 }
 .admin-page__sub {
   margin: var(--sp-2) 0 0;
@@ -170,12 +194,29 @@
 /* ── Grilles ── */
 .admin-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(228px, 1fr));
+  /* 4 colonnes franches sur desktop : avec `auto-fit minmax(228px, 1fr)` la
+     grille tombait à 3 colonnes et laissait la 4ᵉ carte orpheline sur une
+     deuxième ligne, avec un grand vide à droite. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--sp-4);
+}
+@media (max-width: 1100px) {
+  .admin-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .admin-stats {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .admin-columns {
   display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  /* Deux colonnes proches de l'équilibre : avec 3fr/2fr la colonne courte
+     (alertes stock) laissait un grand vide sous elle à côté d'un tableau haut.
+     `align-items: start` empêche l'étirement des cartes, donc on équilibre les
+     largeurs plutôt que d'étirer. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--sp-5);
   align-items: start;
 }
@@ -342,46 +383,9 @@
   background: var(--danger-tint);
 }
 
-/* ── Filtres (statut de commande) ── */
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-3);
-  align-items: center;
-}
-.filters__pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: 0.25rem 0.625rem;
-  border-radius: var(--r-pill);
-  border: 1.5px solid var(--border-soft);
-  background: var(--bg-raised);
-  font-size: var(--fs-micro);
-  font-weight: var(--fw-semibold);
-  color: var(--text-body);
-  transition:
-    border-color var(--dur-base) var(--ease),
-    color var(--dur-base) var(--ease),
-    background-color var(--dur-base) var(--ease);
-}
-.filters__pill:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  text-decoration: none;
-}
-.filters__pill--active {
-  background: var(--accent-tint);
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.filters__count {
-  font-family: var(--font-numeric);
-  color: var(--text-muted);
-}
-.filters__pill--active .filters__count {
-  color: var(--accent);
-}
+/* ── Filtres (statut de commande) ──
+   Les pastilles `.filters` / `.filters__pill` / `.filters__count` sont
+   définies dans tokens.css : le catalogue client les utilise aussi. */
 
 /* ── Paires libellé / valeur (fiches détail) ── */
 .kv {
@@ -411,14 +415,8 @@
   font-family: var(--font-numeric);
 }
 
-/* Titre de carte (h2 dans .card) */
-.card__title {
-  margin: 0 0 var(--sp-3);
-  font-family: var(--font-display);
-  font-size: var(--fs-h3);
-  font-weight: var(--fw-medium);
-  color: var(--text-strong);
-}
+/* Titre de carte (h2 dans .card) : défini dans tokens.css, partagé avec le
+   parcours client. */
 
 /* ── Barres de répartition ── */
 .repartition {
@@ -551,51 +549,9 @@
   font-family: var(--font-numeric);
 }
 
-/* ── Formulaires admin ── */
-.form-grid {
-  display: grid;
-  gap: var(--sp-4);
-}
-.form-grid--2 {
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-}
-.form-field {
-  display: grid;
-  gap: var(--sp-2);
-}
-.form-field__label {
-  font-size: var(--fs-micro);
-  font-weight: var(--fw-semibold);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-.form-field__hint {
-  font-size: var(--fs-micro);
-  color: var(--text-muted);
-  margin: 0;
-}
-.form-field__error {
-  font-size: var(--fs-small);
-  color: var(--danger);
-  margin: 0;
-}
-.form-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
-.form-feedback {
-  font-size: var(--fs-small);
-  margin: 0;
-}
-.form-feedback--ok {
-  color: var(--success);
-}
-.form-feedback--error {
-  color: var(--danger);
-}
+/* ── Formulaires admin ──
+   Les primitives (.form-grid, .form-field, .form-actions, .form-feedback) sont
+   définies dans tokens.css : le parcours client les partage. */
 
 /* ── Boîte de contenu long (corps d'email) ── */
 .mail-body {
@@ -626,15 +582,8 @@
   font-size: var(--fs-micro);
 }
 
-/* ── Utilitaires ── */
-/* Actions d'un état vide : recentrées, jamais un cul-de-sac. */
-.empty-state__actions {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-3);
-  flex-wrap: wrap;
-}
+/* ── Utilitaires ──
+   `.empty-state__actions` est défini dans tokens.css (partagé). */
 
 .admin-main {
   min-width: 0;
