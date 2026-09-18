@@ -218,9 +218,16 @@ function buildMessage(params: {
         ? `Paiement déjà confirmé avant cette vérification : la commande ${orderNumber} était payée, aucune écriture (ni stock, ni email).`
         : `Paiement confirmé : la commande ${orderNumber} est payée. Le stock réservé a été décrémenté et l'email de confirmation envoyé.`;
     case "pending":
-      return `Le fournisseur ne s'est pas encore prononcé. La commande ${orderNumber} reste en attente ; prochaine vérification automatique dans ${formatDelay(nextAttempts)}.`;
+      // `idempotent` ici signifie que le paiement était DÉJÀ confirmé (un
+      // « pending » tardif ne rétrograde jamais) — le dire autrement ferait
+      // croire à un paiement en difficulté alors qu'il est payé.
+      return idempotent
+        ? `Paiement déjà confirmé : la commande ${orderNumber} reste payée, rien à faire.`
+        : `Le fournisseur ne s'est pas encore prononcé. La commande ${orderNumber} reste en attente ; prochaine vérification automatique dans ${formatDelay(nextAttempts)}.`;
     case "failed":
-      return `Le fournisseur déclare le paiement en échec. La commande ${orderNumber} N'EST PAS annulée et le stock réservé N'EST PAS libéré : c'est au marchand de trancher (décision D6).`;
+      return idempotent
+        ? `Le fournisseur a répondu « échec », mais ce paiement était DÉJÀ confirmé : la commande ${orderNumber} reste payée. Un verdict tardif n'annule jamais un encaissement, et rien n'est rétrogradé.`
+        : `Le fournisseur déclare le paiement en échec. La commande ${orderNumber} N'EST PAS annulée et le stock réservé N'EST PAS libéré : c'est au marchand de trancher (décision D6).`;
     case "error":
       return `Vérification impossible (${detail ?? "cause inconnue"}). Nouvelle tentative automatique dans ${formatDelay(nextAttempts)}.`;
     case "not_pending":

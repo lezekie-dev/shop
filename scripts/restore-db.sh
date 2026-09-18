@@ -31,7 +31,13 @@ DB_NAME="${DB_NAME:-shop}"
 # Tables comparées entre source et restauration : les volumes qui comptent pour
 # le marchand (ce qu'il vend, ses clients, ses commandes, ses photos). S'il faut
 # en ajouter une, c'est ici — et la sortie du runbook doit être refaite.
-VERIFY_TABLES=("Order" "Product" "Customer" "ProductImage" "JobRun")
+#
+# Les tables de JOURNAL (`JobRun`, `AuditLog`, `WebhookEvent`) ne sont PAS
+# comparées : la sauvegarde écrit sa propre trace `JobRun` APRÈS avoir pris le
+# dump, donc un écart y est normal et ne dit rien sur la qualité de la
+# restauration. Les compter ferait sortir ce script en échec à chaque fois, et
+# un contrôle qui crie toujours est un contrôle qu'on finit par ignorer.
+VERIFY_TABLES=("Order" "OrderItem" "Product" "Customer" "ProductImage" "Payment")
 
 usage() {
   sed -n '2,30p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
@@ -141,6 +147,10 @@ for table in "${VERIFY_TABLES[@]}"; do
   fi
   printf '    %-14s %10s %10s %s\n' "$table" "$source_count" "$target_count" "$state"
 done
+
+# Ligne informative : la table de journal revient bien dans la restauration,
+# mais son comptage n'est pas un critère de réussite (cf. commentaire ci-dessus).
+printf '    %-14s %10s %10s %s\n' "JobRun" "$(count_of "$DB_NAME" JobRun)" "$(count_of "$TARGET_DB" JobRun)" "journal (non comparé)"
 
 # ─────────────────────────────────────────────────────────────────────
 # 5. Vérification : les visuels produit existent bien sur le disque

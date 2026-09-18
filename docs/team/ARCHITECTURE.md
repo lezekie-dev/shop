@@ -621,7 +621,7 @@ Toutes les routes vivent dans `src/app/api/**/route.ts`. Convention : handler ex
 
 | Méthode | Path                                   | Params / body                                      | Auth      | Response                                  |
 |---------|----------------------------------------|----------------------------------------------------|-----------|-------------------------------------------|
-| GET     | `/api/health`                          | —                                                  | non       | `{ ok: true, version }`                   |
+| GET     | `/api/health`                          | —                                                  | non       | `{ ok, version, db: "up"\|"down", durationMs }` — **503** si la base ne répond pas |
 | GET     | `/api/products`                        | `?category=&q=&page=&limit=`                       | non       | `{ items: ProductDto[], total }`           |
 | GET     | `/api/products/[slug]`                 | path                                               | non       | `ProductDetailDto` (variantes + stock)    |
 | POST    | `/api/cart/items`                      | `{ variantId, quantity }`                          | cookie sessionKey | `{ cartId, items }`                  |

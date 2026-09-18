@@ -37,7 +37,8 @@
 #   DB_USER         utilisateur Postgres        (shop)
 #   DB_NAME         base à sauvegarder          (shop)
 #   MEDIA_DIRS      dossiers de fichiers, séparés par des espaces,
-#                   relatifs à APP_DIR           (public/uploads)
+#                   relatifs à APP_DIR
+#                   (public/uploads public/products)
 #   APP_DIR         racine de l'application     (dossier parent du script)
 #
 set -Eeuo pipefail
@@ -49,7 +50,7 @@ RETENTION_DAYS="${RETENTION_DAYS:-7}"
 DB_CONTAINER="${DB_CONTAINER:-shop-db}"
 DB_USER="${DB_USER:-shop}"
 DB_NAME="${DB_NAME:-shop}"
-MEDIA_DIRS="${MEDIA_DIRS:-public/uploads}"
+MEDIA_DIRS="${MEDIA_DIRS:-public/uploads public/products}"
 JOB_NAME="${JOB_NAME:-backup-db}"
 LOG_FILE="${LOG_FILE:-$BACKUP_DIR/backup.log}"
 
@@ -155,12 +156,22 @@ mv "$DUMP_FILE.tmp" "$DUMP_FILE"
 log "Dump validé : $DUMP_FILE ($(numfmt --to=iec-i --suffix=B "$DUMP_BYTES" 2>/dev/null || echo "${DUMP_BYTES} octets"))"
 
 # ─────────────────────────────────────────────────────────────────────
-# 3. Fichiers téléversés (lot H) — indissociables de la base
+# 3. Fichiers produits (téléversements du lot H + visuels référencés)
 # ─────────────────────────────────────────────────────────────────────
 # Restaurer la base sans les images produit des fiches produit pointant vers
 # des fichiers inexistants : la boutique paraît cassée alors que la base est
 # saine. C'est un critère du PO, donc les deux partent dans le même exercice,
 # sous le même horodatage.
+#
+# POURQUOI DEUX DOSSIERS PAR DÉFAUT
+#   - `public/uploads` : les téléversements du lot H (volume local). Il n'existe
+#     pas encore au moment où ce script est écrit — le script le signale et
+#     l'ajoutera automatiquement le jour où il apparaîtra, sans modification.
+#   - `public/products` : les visuels ACTUELLEMENT référencés par les lignes
+#     `ProductImage` (vérifiable : `SELECT url FROM "ProductImage"`). Ils sont
+#     versionnés dans git, mais une restauration ne doit pas dépendre d'un
+#     `git clone` qui marche : sauvegarder les images coûte moins cher que
+#     découvrir une fiche produit sans photo un jour de restauration.
 MEDIA_BYTES=0
 INCLUDED_DIRS=()
 for dir in $MEDIA_DIRS; do

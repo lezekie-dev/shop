@@ -30,4 +30,13 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  // Le tsconfig est en `"jsx": "preserve"` (Next compile le JSX lui-même), donc
+  // esbuild retombe par défaut sur le runtime JSX « classique », qui exige un
+  // `React` global — absent en test. On aligne explicitement Vitest sur le
+  // runtime AUTOMATIQUE (celui qu'utilise Next en production) pour qu'un test
+  // puisse importer un composant `.tsx` (page serveur, badge, icône) sans
+  // bricolage de global. Sans ça : « ReferenceError: React is not defined ».
+  esbuild: {
+    jsx: "automatic",
+  },
 });

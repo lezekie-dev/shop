@@ -9,6 +9,7 @@ import { can, type Capability } from "@/domain/access";
 import {
   IconDashboard,
   IconEmails,
+  IconEuro,
   IconOrders,
   IconProducts,
   IconShield,
