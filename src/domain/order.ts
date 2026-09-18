@@ -40,6 +40,34 @@ export function canTransitionTo(from: OrderStatus, to: OrderStatus): boolean {
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Liste et garde de type des statuts
+// ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Les statuts dans l'ordre du cycle de vie d'une commande.
+ *
+ * Source unique : les filtres de l'admin, les libellés et la validation des
+ * query params (`?status=`) s'appuient tous dessus, donc ajouter un statut au
+ * schéma Prisma ne peut pas produire un filtre fantôme.
+ */
+export const ORDER_STATUSES: readonly OrderStatus[] = [
+  OrderStatus.PENDING_PAYMENT,
+  OrderStatus.PAID,
+  OrderStatus.PREPARING,
+  OrderStatus.SHIPPED,
+  OrderStatus.DELIVERED,
+  OrderStatus.CANCELLED,
+  OrderStatus.REFUNDED,
+];
+
+const ORDER_STATUS_SET: ReadonlySet<string> = new Set<string>(ORDER_STATUSES);
+
+/** Garde de type : `value` est-il un `OrderStatus` réellement supporté ? */
+export function isOrderStatus(value: string): value is OrderStatus {
+  return ORDER_STATUS_SET.has(value);
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Génération du numéro de commande
 // ─────────────────────────────────────────────────────────────────────
 

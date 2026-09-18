@@ -1,5 +1,7 @@
 import { OrderStatus } from "@prisma/client";
 
+import { ORDER_STATUSES, isOrderStatus } from "@/domain/order";
+
 /**
  * Badge de statut de commande.
  *
@@ -28,23 +30,15 @@ export const ORDER_STATUS_META: Record<OrderStatus, StatusMeta> = {
 };
 
 /** Ordre d'affichage des filtres : le cycle de vie d'une commande. */
-export const ORDER_STATUS_ORDER: readonly OrderStatus[] = [
-  "PENDING_PAYMENT",
-  "PAID",
-  "PREPARING",
-  "SHIPPED",
-  "DELIVERED",
-  "CANCELLED",
-  "REFUNDED",
-];
+export const ORDER_STATUS_ORDER: readonly OrderStatus[] = ORDER_STATUSES;
 
 export function orderStatusLabel(status: OrderStatus): string {
   return ORDER_STATUS_META[status].label;
 }
 
-/** Vrai si `value` est bien un OrderStatus connu (validation de query param). */
-export function isOrderStatus(value: string): value is OrderStatus {
-  return Object.prototype.hasOwnProperty.call(ORDER_STATUS_META, value);
+/** Libellé d'un statut reçu en query param, sans planter sur une valeur inconnue. */
+export function orderStatusLabelOrSelf(value: string): string {
+  return isOrderStatus(value) ? ORDER_STATUS_META[value].label : value;
 }
 
 export function OrderStatusBadge({ status }: { status: OrderStatus }) {
