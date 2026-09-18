@@ -2449,3 +2449,34 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   font-size: var(--fs-micro);
   letter-spacing: var(--ls-label);
 }
+
+/* ── Réassurance au paiement ──
+   Sous le bouton « Payer et commander », séparée par un filet : c'est le
+   dernier endroit où le client peut renoncer, et la maquette y place ses
+   garanties. Liste sobre, sans icônes de certification ni logos — le texte
+   décrit ce que le produit fait réellement. */
+.checkout-trust {
+  list-style: none;
+  margin: var(--sp-5) 0 0;
+  padding: var(--sp-4) 0 0;
+  border-top: 1.5px solid var(--border-soft);
+  display: grid;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.checkout-trust li {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+}
+.checkout-trust li::before {
+  content: "";
+  flex: none;
+  width: 5px;
+  height: 5px;
+  margin-top: 0.55em;
+  border-radius: 50%;
+  background: var(--accent);
+}

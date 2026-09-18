@@ -328,6 +328,25 @@ export function CheckoutForm(_props: { items?: CheckoutItem[] } = {}) {
           Les champs marqués <span className="form-field__req">*</span> sont obligatoires.
         </p>
       </div>
+
+      {/* ── Réassurance au moment du paiement ──
+          Reprise de la maquette, qui place des garanties ICI et pas seulement
+          sur la fiche produit : c'est l'écran où l'on demande à quelqu'un de
+          sortir son argent, donc celui où le doute est le plus fort. Chaque
+          ligne décrit un comportement réellement implémenté — aucune mention
+          de « paiement 100 % sécurisé » ni de logo de certification, qui
+          seraient des affirmations invérifiables. */}
+      <ul className="checkout-trust">
+        <li>
+          Aucun numéro de carte n&apos;est demandé : le règlement se fait par Mobile Money
+          ou virement, depuis votre propre téléphone.
+        </li>
+        <li>
+          Vous recevez une référence de commande immédiatement, et un numéro de suivi à
+          l&apos;expédition.
+        </li>
+        <li>Un article qui ne convient pas est repris sous 14 jours.</li>
+      </ul>
     </form>
   );
 }
