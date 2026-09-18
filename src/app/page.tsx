@@ -59,7 +59,7 @@ export default async function HomePage() {
               <h2 className="section__title">Nouveautés</h2>
               <Link href="/products">Tout voir →</Link>
             </div>
-            <ul className="card-grid">
+            <ul className="card-grid" data-count={featured.length}>
               {featured.map((p) => {
                 const cover = p.images[0] ?? null;
                 const minPrice = p.variants[0]?.priceCents ?? null;
@@ -121,7 +121,7 @@ export default async function HomePage() {
               </div>
             </div>
           ) : (
-            <ul className="card-grid">
+            <ul className="card-grid" data-count={categories.length}>
               {categories.map((c) => (
                 <li key={c.id} className="card card-interactive">
                   <Link href={`/products?category=${c.slug}`} className="card-title">

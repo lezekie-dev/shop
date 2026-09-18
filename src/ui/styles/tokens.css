@@ -661,7 +661,13 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 1024px) {
+  /* 4 colonnes quand il y a exactement 4 produits : évite la carte orpheline
+     sur une deuxième ligne avec un grand vide à droite (défaut de hiérarchie
+     repéré à l'audit). Au-delà de 4 produits, la grille repasse à 3 colonnes
+     pour garder des cartes de taille confortable. */
   .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card-grid[data-count="4"] { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .card-grid[data-count="2"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 /* La carte EST l'item de grille : les cartes d'une même rangée s'alignent en
    hauteur, et le prix descend au bas de la carte (`margin-top: auto`). */

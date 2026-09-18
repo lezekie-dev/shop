@@ -135,7 +135,7 @@ export default async function ProductsListPage({
           </div>
         </div>
       ) : (
-        <ul className="card-grid enter enter-3">
+        <ul className="card-grid enter enter-3" data-count={items.length}>
           {items.map(({ product, minPrice }) => {
             const cover = product.images[0] ?? null;
             return (
