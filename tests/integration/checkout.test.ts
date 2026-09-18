@@ -142,7 +142,7 @@ describe("POST /api/checkout (mock payment)", () => {
     expect([400, 410]).toContain(res.status);
   });
 
-  it("GET /api/orders/[id] renvoie le détail public", async () => {
+  it("GET /api/orders/[id] exige le jeton d'accès (401 sans, 200 avec)", async () => {
     const { products } = await seedFixtures();
     const v = products["t-shirt-basique-blanc"]!.variants[0]!;
     const { cart } = await getOrCreateCart({});
@@ -150,9 +150,27 @@ describe("POST /api/checkout (mock payment)", () => {
       data: { cartId: cart.id, variantId: v.id, quantity: 1, unitPriceCents: v.priceCents },
     });
     const res = await checkout(checkoutRequest(cart.id, baseBody));
-    const { orderId } = await res.json();
-    const getRes = await orderGet(
+    const { orderId, accessToken } = await res.json();
+    expect(accessToken, "le checkout doit renvoyer le jeton d'accès").toMatch(/^[0-9a-f]{64}$/);
+
+    // Sans jeton : 401. L'id seul ne doit plus rien ouvrir — c'était la faille
+    // (email, téléphone et adresse du client exposés à qui avait l'URL).
+    const withoutToken = await orderGet(
       new NextRequest(`http://localhost:3000/api/orders/${orderId}`),
+      { params: { id: orderId } },
+    );
+    expect(withoutToken.status).toBe(401);
+
+    // Avec un jeton invalide : 404 (on ne confirme pas l'existence).
+    const wrongToken = await orderGet(
+      new NextRequest(`http://localhost:3000/api/orders/${orderId}?token=${"0".repeat(64)}`),
+      { params: { id: orderId } },
+    );
+    expect(wrongToken.status).toBe(404);
+
+    // Avec le bon jeton : 200 et le détail complet.
+    const getRes = await orderGet(
+      new NextRequest(`http://localhost:3000/api/orders/${orderId}?token=${accessToken}`),
       { params: { id: orderId } },
     );
     expect(getRes.status).toBe(200);
