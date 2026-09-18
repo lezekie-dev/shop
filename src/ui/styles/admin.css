@@ -412,11 +412,22 @@
 /* ── Barres de répartition ── */
 .repartition {
   display: grid;
-  gap: var(--sp-3);
+  gap: var(--sp-4);
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 .repartition__row {
   display: grid;
   gap: var(--sp-2);
+}
+.repartition__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
 }
 .repartition__head {
   display: flex;
@@ -605,6 +616,15 @@
 }
 
 /* ── Utilitaires ── */
+/* Actions d'un état vide : recentrées, jamais un cul-de-sac. */
+.empty-state__actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
 .admin-main {
   min-width: 0;
 }
