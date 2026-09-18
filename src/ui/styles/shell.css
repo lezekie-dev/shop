@@ -20,17 +20,35 @@
   min-width: 0;
 }
 .site-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
   font-family: var(--font-display);
-  font-size: var(--fs-h3);
+  font-size: var(--fs-h2);
   font-weight: var(--fw-semibold);
   color: var(--text-strong);
   text-decoration: none;
-  letter-spacing: -0.015em;
+  letter-spacing: var(--ls-tight);
   flex: none;
 }
 .site-header__brand:hover {
   color: var(--text-strong);
   text-decoration: none;
+}
+/* Carré terracotta : repère de marque, lisible même sans lire le mot. */
+.site-header__mark {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--accent);
+  flex: none;
+  transition: transform var(--dur-base) var(--ease);
+}
+.site-header__brand:hover .site-header__mark {
+  transform: rotate(45deg);
+}
+.site-header__wordmark {
+  white-space: nowrap;
 }
 .site-header__nav {
   display: flex;
@@ -76,6 +94,7 @@
   transition:
     border-color var(--dur-base) var(--ease),
     color var(--dur-base) var(--ease),
+    background-color var(--dur-base) var(--ease),
     transform var(--dur-base) var(--ease);
   white-space: nowrap;
   flex: none;
@@ -85,6 +104,30 @@
   color: var(--accent);
   text-decoration: none;
   transform: translateY(-1px);
+}
+/* Panier rempli : fond plein. Le bouton change d'état physique une fois
+   qu'il y a quelque chose dedans — c'est l'invitation à finaliser. */
+.site-header__cart--filled {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--text-inverse);
+}
+.site-header__cart--filled:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+  color: var(--text-inverse);
+}
+.site-header__cart--filled .site-header__cart-count {
+  background: var(--text-inverse);
+  color: var(--accent);
+}
+.site-header__cart--active {
+  border-color: var(--accent);
+}
+.site-header__cart-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }
 .site-header__cart-count {
   display: inline-flex;
@@ -183,6 +226,29 @@
   gap: var(--sp-2);
   font-size: var(--fs-small);
   color: var(--text-muted);
+}
+/* Les listes à icônes alignent le pictogramme sur la PREMIÈRE ligne du texte
+   (`flex-start` + décalage optique) : centré verticalement, il flotterait au
+   milieu d'une entrée qui passe sur deux lignes. */
+.site-footer__list--icons li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.site-footer__list--icons svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+.site-footer__link {
+  color: var(--accent);
+  text-decoration: none;
+}
+.site-footer__link:hover {
+  text-decoration: underline;
 }
 .site-footer__legal {
   max-width: var(--container);

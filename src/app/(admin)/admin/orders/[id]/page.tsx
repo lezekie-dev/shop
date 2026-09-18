@@ -11,6 +11,9 @@ import {
 } from "@/ui/components/admin/payment-method-badge";
 import { Money } from "@/ui/components/money";
 import { formatDateTime } from "@/ui/format";
+import {
+  IconTruck,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -120,9 +123,7 @@ export default async function AdminOrderDetailPage({
           <Card title="Historique d'expédition">
             {order.shipments.length === 0 ? (
               <div className="empty-state">
-                <span className="empty-state__emoji" aria-hidden>
-                  🚚
-                </span>
+                <IconTruck className="empty-state__icon" />
                 <p className="empty-state__title">Aucune expédition enregistrée</p>
                 <p className="empty-state__text">
                   Aucun colis n&apos;a encore été créé pour cette commande. Renseignez le

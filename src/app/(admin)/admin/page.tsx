@@ -11,6 +11,11 @@ import {
 import { StatCard, type StatTrend, type StatTrendTone } from "@/ui/components/admin/stat-card";
 import { Money } from "@/ui/components/money";
 import { formatDateTime, formatDayShort } from "@/ui/format";
+import {
+  IconCheck,
+  IconEuro,
+  IconOrders,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -71,6 +76,7 @@ export default async function AdminDashboardPage() {
     <div className="admin-page">
       <div className="admin-page__head enter enter-1">
         <div>
+          <p className="eyebrow">Vue d&apos;ensemble</p>
           <h1 className="admin-page__title">Tableau de bord</h1>
           <p className="admin-page__sub">
             <span className="live-dot" aria-hidden /> Données actualisées le{" "}
@@ -85,9 +91,7 @@ export default async function AdminDashboardPage() {
       {!data.hasAnyOrder ? (
         <>
           <div className="empty-state enter enter-2">
-            <span className="empty-state__emoji" aria-hidden>
-              📦
-            </span>
+            <IconOrders className="empty-state__icon" />
             <p className="empty-state__title">Aucune commande pour le moment</p>
             <p className="empty-state__text">
               Dès la première commande, vous verrez ici le chiffre d&apos;affaires, le panier
@@ -157,9 +161,7 @@ export default async function AdminDashboardPage() {
                 rowLabel={(row) => `Ouvrir la commande ${row.number}`}
                 emptyState={
                   <div className="empty-state">
-                    <span className="empty-state__emoji" aria-hidden>
-                      🧾
-                    </span>
+                    <IconOrders className="empty-state__icon" />
                     <p className="empty-state__title">Aucune commande récente</p>
                     <p className="empty-state__text">
                       Les commandes apparaissent ici dès leur création.
@@ -239,9 +241,7 @@ export default async function AdminDashboardPage() {
             </div>
             {data.payments.length === 0 ? (
               <div className="empty-state">
-                <span className="empty-state__emoji" aria-hidden>
-                  💳
-                </span>
+                <IconEuro className="empty-state__icon" />
                 <p className="empty-state__title">Aucun encaissement sur la période</p>
                 <p className="empty-state__text">
                   Aucune commande n&apos;a été payée sur les {data.windowDays} derniers jours :
@@ -310,9 +310,7 @@ function StockAlertsSection({
       </div>
       {alerts.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-state__emoji" aria-hidden>
-            🌿
-          </span>
+          <IconCheck className="empty-state__icon" />
           <p className="empty-state__title">Aucune alerte de stock</p>
           <p className="empty-state__text">
             Toutes vos variantes ont plus de 5 unités disponibles. Rien à réapprovisionner

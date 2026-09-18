@@ -8,6 +8,9 @@ import {
 } from "@/server/admin-products";
 import { DataTable } from "@/ui/components/admin/data-table";
 import { formatDateTime } from "@/ui/format";
+import {
+  IconEmails,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -99,9 +102,7 @@ export default async function AdminEmailsPage({
           rowLabel={(row) => `Lire l'email « ${row.subject} »`}
           emptyState={
             <div className="empty-state">
-              <span className="empty-state__emoji" aria-hidden>
-                ✉️
-              </span>
+              <IconEmails className="empty-state__icon" />
               <p className="empty-state__title">Aucun email envoyé</p>
               <p className="empty-state__text">
                 La boîte d&apos;envoi est vide. Un email de confirmation part dès qu&apos;une

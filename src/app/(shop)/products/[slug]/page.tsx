@@ -5,6 +5,9 @@ import { formatMoneyEur } from "@/domain/pricing";
 import { AddToCartForm } from "@/ui/components/add-to-cart-form";
 import { ProductVisual } from "@/ui/components/product-visual";
 import { prisma } from "@/lib/db";
+import {
+  IconBox,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -34,13 +37,29 @@ export default async function ProductDetailPage({
     const reserved = v.stock?.reserved ?? 0;
     const quantity = v.stock?.quantity ?? 0;
     const available = Math.max(0, quantity - reserved);
+    // La couleur est stockée dans `attributes` (JSON) : on l'extrait pour
+    // pouvoir la comparer au visuel affiché.
+    const attrs = (v.attributes ?? {}) as { color?: unknown };
+    const color = typeof attrs.color === "string" ? attrs.color : null;
     return {
       id: v.id,
       name: v.name,
       priceCents: v.priceCents,
       available,
+      color,
     };
   });
+
+  // ── Cohérence visuel / variante ───────────────────────────────
+  // Le visuel d'un produit est nommé d'après sa couleur (`casquette-noir.png`).
+  // Sans cette déduction, le formulaire présélectionnait la première variante
+  // disponible (« Beige ») alors que l'image montrait un article NOIR : le
+  // client ne savait pas ce qu'il achetait. On cherche donc la variante dont
+  // la couleur correspond au nom du fichier, et on la met en avant.
+  const coverUrl = product.images[0]?.url ?? "";
+  const imageBase = coverUrl.split("/").pop()?.replace(/\.[a-z0-9]+$/i, "") ?? "";
+  const variantFromImageId =
+    variants.find((v) => v.color && imageBase.endsWith(`-${v.color}`))?.id ?? null;
 
   const prices = variants.map((v) => v.priceCents);
   const minPrice = prices.length > 0 ? Math.min(...prices) : null;
@@ -63,16 +82,30 @@ export default async function ProductDetailPage({
         </div>
 
         <div className="detail__info">
-          <p className="eyebrow">{product.category.name}</p>
+          {/* Fil d'Ariane : permet de revenir à la catégorie d'un clic, et
+              donne un repère de profondeur dans le catalogue. */}
+          <nav className="breadcrumb" aria-label="Fil d'Ariane">
+            <Link href="/products" className="breadcrumb__link">
+              Boutique
+            </Link>
+            <span className="breadcrumb__sep" aria-hidden>
+              /
+            </span>
+            <Link
+              href={`/products?category=${product.category.slug}`}
+              className="breadcrumb__link"
+            >
+              {product.category.name}
+            </Link>
+          </nav>
+
           <h1 className="page__title">{product.name}</h1>
           <p className="detail__desc">{product.description}</p>
 
           {minPrice !== null && (
             <p className="detail__price">
               {minPrice === maxPrice ? (
-                <>
-                  Prix : <span className="money money--lg">{formatMoneyEur(minPrice)}</span>
-                </>
+                <span className="money money--lg">{formatMoneyEur(minPrice)}</span>
               ) : (
                 <>
                   De <span className="money">{formatMoneyEur(minPrice)}</span> à{" "}
@@ -91,9 +124,7 @@ export default async function ProductDetailPage({
 
           {variants.length === 0 ? (
             <div className="empty-state">
-              <span className="empty-state__emoji" aria-hidden>
-                📦
-              </span>
+              <IconBox className="empty-state__icon" />
               <p className="empty-state__title">Aucune variante disponible</p>
               <p className="empty-state__text">
                 Ce produit est publié mais aucune de ses variantes n&apos;est active : il
@@ -107,9 +138,16 @@ export default async function ProductDetailPage({
               </div>
             </div>
           ) : (
-            <div className="card">
+            <div className="card card--purchase">
               <h2 className="card__title">Choisir une variante</h2>
-              <AddToCartForm variants={variants} />
+              <AddToCartForm variants={variants} defaultVariantId={variantFromImageId} />
+              {/* Arguments de réassurance placés SOUS le bouton d'ajout : c'est
+                  l'instant précis où l'hésitation se produit. */}
+              <ul className="purchase-points">
+                <li>Commande sans créer de compte</li>
+                <li>Mobile Money (Orange, MTN) ou virement bancaire</li>
+                <li>Expédition suivie, retour accepté sous 14 jours</li>
+              </ul>
             </div>
           )}
         </div>

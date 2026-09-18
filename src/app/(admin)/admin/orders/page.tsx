@@ -18,6 +18,10 @@ import {
 import { PaymentMethodBadge } from "@/ui/components/admin/payment-method-badge";
 import { Money } from "@/ui/components/money";
 import { formatDateTime } from "@/ui/format";
+import {
+  IconOrders,
+  IconSearch,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -93,9 +97,7 @@ export default async function AdminOrdersPage({
           emptyState={
             status === null ? (
               <div className="empty-state">
-                <span className="empty-state__emoji" aria-hidden>
-                  🧾
-                </span>
+                <IconOrders className="empty-state__icon" />
                 <p className="empty-state__title">Aucune commande</p>
                 <p className="empty-state__text">
                   Aucune commande n&apos;a encore été passée. Partagez votre catalogue : dès la
@@ -109,9 +111,7 @@ export default async function AdminOrdersPage({
               </div>
             ) : (
               <div className="empty-state">
-                <span className="empty-state__emoji" aria-hidden>
-                  🔎
-                </span>
+                <IconSearch className="empty-state__icon" />
                 <p className="empty-state__title">
                   Aucune commande avec ce statut
                 </p>

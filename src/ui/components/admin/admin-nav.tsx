@@ -2,6 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { ComponentType, SVGProps } from "react";
+
+import {
+  IconDashboard,
+  IconEmails,
+  IconOrders,
+  IconProducts,
+  IconStock,
+} from "@/ui/components/icons";
 
 /**
  * Navigation du back-office.
@@ -9,20 +18,25 @@ import { usePathname } from "next/navigation";
  * Client component uniquement pour `usePathname` : le lien actif doit être
  * marqué visuellement ET annoncé à l'accessibilité (`aria-current="page"`).
  * Un Server Component ne peut pas connaître l'URL courante.
+ *
+ * Les icônes sont des composants SVG et non des glyphes Unicode : un
+ * caractère comme « ◈ » est dessiné par la police du système, avec une taille
+ * optique et un alignement vertical qui changent d'un appareil à l'autre.
+ * Dans une barre de navigation lue en permanence, ce flottement se voit.
  */
 
 export type AdminNavItem = {
   href: string;
   label: string;
-  icon: string;
+  Icon: ComponentType<SVGProps<SVGSVGElement>>;
 };
 
 export const ADMIN_NAV_ITEMS: readonly AdminNavItem[] = [
-  { href: "/admin", label: "Tableau de bord", icon: "◈" },
-  { href: "/admin/orders", label: "Commandes", icon: "❐" },
-  { href: "/admin/products", label: "Produits", icon: "◍" },
-  { href: "/admin/stock", label: "Stock", icon: "◧" },
-  { href: "/admin/emails", label: "Emails", icon: "✉" },
+  { href: "/admin", label: "Tableau de bord", Icon: IconDashboard },
+  { href: "/admin/orders", label: "Commandes", Icon: IconOrders },
+  { href: "/admin/products", label: "Produits", Icon: IconProducts },
+  { href: "/admin/stock", label: "Stock", Icon: IconStock },
+  { href: "/admin/emails", label: "Emails", Icon: IconEmails },
 ];
 
 /** `/admin` ne doit pas être « actif » quand on est sur `/admin/orders`. */
@@ -48,9 +62,7 @@ export function AdminNav() {
                 }
                 aria-current={active ? "page" : undefined}
               >
-                <span className="admin-nav__icon" aria-hidden>
-                  {item.icon}
-                </span>
+                <item.Icon className="admin-nav__icon" />
                 {item.label}
               </Link>
             </li>

@@ -34,6 +34,13 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             {SHOP_NAME}
             <span className="sr-only"> — tableau de bord</span>
           </Link>
+          {/* Marqueur de démonstration. Il vit dans le BACK-OFFICE, pas sur la
+              vitrine : le client final n'a pas à lire une note technique, mais
+              le marchand doit savoir que les visuels et le paiement sont
+              simulés tant qu'il n'a pas branché ses propres moyens. */}
+          <span className="admin-env-badge" title="Visuels et paiement de démonstration — à remplacer avant mise en production">
+            Démo
+          </span>
           <div className="admin-header__meta">
             <span className="admin-header__identity">
               <span className="sr-only">Connecté en tant que </span>

@@ -4,6 +4,9 @@ import { requireAdmin } from "@/lib/auth";
 import { listAdminProducts } from "@/server/admin-products";
 import { DataTable, RowChevron } from "@/ui/components/admin/data-table";
 import { Money } from "@/ui/components/money";
+import {
+  IconProducts,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +44,7 @@ export default async function AdminProductsPage() {
           rowClassName={(row) => (row.active ? undefined : "data-table__row--muted")}
           emptyState={
             <div className="empty-state">
-              <span className="empty-state__emoji" aria-hidden>
-                🧵
-              </span>
+              <IconProducts className="empty-state__icon" />
               <p className="empty-state__title">Aucun produit</p>
               <p className="empty-state__text">
                 Votre catalogue est vide. Ajoutez vos produits et leurs variantes (taille,

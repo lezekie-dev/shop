@@ -5,6 +5,9 @@ import { CART_COOKIE_NAME, readCart } from "@/server/cart";
 import { computeTotals } from "@/domain/cart";
 import { formatMoneyEur } from "@/domain/pricing";
 import { CheckoutForm, type CheckoutItem } from "@/ui/components/checkout-form";
+import {
+  IconCart,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -27,9 +30,7 @@ export default async function CheckoutPage() {
         </div>
 
         <div className="empty-state enter enter-2">
-          <span className="empty-state__emoji" aria-hidden>
-            🛒
-          </span>
+          <IconCart className="empty-state__icon" />
           <p className="empty-state__title">Votre panier est vide</p>
           <p className="empty-state__text">
             Il n&apos;y a rien à commander pour l&apos;instant. Ajoutez au moins un article depuis

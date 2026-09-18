@@ -10,6 +10,9 @@ import {
 } from "@/server/admin-products";
 import { DataTable, RowChevron } from "@/ui/components/admin/data-table";
 import { Money } from "@/ui/components/money";
+import {
+  IconStock,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -74,9 +77,7 @@ export default async function AdminStockPage() {
           }
           emptyState={
             <div className="empty-state">
-              <span className="empty-state__emoji" aria-hidden>
-                📦
-              </span>
+              <IconStock className="empty-state__icon" />
               <p className="empty-state__title">Aucune variante en stock</p>
               <p className="empty-state__text">
                 Aucun produit n&apos;a encore de variante. Ajoutez les tailles, couleurs et SKU

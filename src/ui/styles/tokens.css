@@ -15,6 +15,7 @@
   --text-strong: #2a1810;      /* warm brown — titres */
   --text-body: #4a3428;        /* corps de texte */
   --text-muted: #8a7264;       /* légendes, méta */
+  --text-disabled: #c4b3a4;    /* boutons désactivés (contraste faible voulu) */
   --text-inverse: #fffaf5;     /* sur fond terracotta */
 
   /* ── Bordures ── */
@@ -37,23 +38,41 @@
   --info-tint: #eef1f4;
 
   /* ── Typographie ──
-     Biface : serif pour le titrage, sans pour le corps,
-     monospace UNIQUEMENT pour les chiffres à aligner. */
+     Biface à contraste FORT : un serif avec du caractère pour le titrage,
+     un sans-serif net pour le corps, monospace réservé aux chiffres alignés.
+     Les deux familles sont chargées via next/font (aucune requête externe).
+
+     Fraunces est une variable à axes (opsz, SOFT, WONK) : à grand corps elle
+     prend une allure éditoriale affirmée, ce qui est exactement ce qu'on veut
+     sur le titrage. Inter reste le contrepoint neutre du corps de texte. */
   --font-display: "Fraunces", "Playfair Display", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-numeric: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
 
-  /* Échelle — sauts francs, pas de 1.5x timide */
-  --fs-display: 2.75rem;   /* h1 de page */
-  --fs-h1: 2rem;           /* h1 de section */
-  --fs-h2: 1.5rem;
-  --fs-h3: 1.1875rem;
+  /* Échelle — sauts LARGES, pas de 1.5x timide.
+     `--fs-mega` n'est utilisé qu'une fois par page (le titre du hero) : c'est
+     le point d'accroche qui donne le ton. S'il se répète, il ne frappe plus. */
+  --fs-mega: clamp(2.75rem, 7.5vw, 5rem);   /* titre de hero */
+  --fs-display: clamp(2rem, 4.5vw, 3.25rem); /* h1 de page */
+  --fs-h1: clamp(1.5rem, 2.6vw, 2.125rem);
+  --fs-h2: 1.375rem;
+  --fs-h3: 1.125rem;
   --fs-body: 1rem;
   --fs-small: 0.875rem;
   --fs-micro: 0.75rem;
 
-  --lh-tight: 1.15;
+  /* Interlignage : serré sur le titrage (les grosses tailles n'ont pas besoin
+     d'air, elles en ont déjà par leur corps), confortable sur le texte. */
+  --lh-mega: 0.95;
+  --lh-tight: 1.08;
   --lh-body: 1.6;
+
+  /* Interlettrage : NÉGATIF sur le titrage (les grandes tailles paraissent
+     trop espacées sans correction optique), POSITIF et large sur les petits
+     labels en capitales, qui sinon se tassent et deviennent illisibles. */
+  --ls-mega: -0.035em;
+  --ls-tight: -0.02em;
+  --ls-label: 0.09em;
 
   --fw-regular: 400;
   --fw-medium: 500;
@@ -118,13 +137,29 @@ h1, h2, h3 {
   font-family: var(--font-display);
   color: var(--text-strong);
   line-height: var(--lh-tight);
-  letter-spacing: -0.015em;
+  letter-spacing: var(--ls-tight);
   margin: 0;
+  /* Fraunces est une police variable : `opsz` (taille optique) ajuste le
+     dessin au corps affiché, `wght` permet les graisses. On laisse le
+     navigateur interpoler plutôt que d'imposer une graisse fixe. */
+  font-optical-sizing: auto;
 }
 
 h1 { font-size: var(--fs-h1); font-weight: var(--fw-semibold); }
 h2 { font-size: var(--fs-h2); font-weight: var(--fw-semibold); }
 h3 { font-size: var(--fs-h3); font-weight: var(--fw-medium); }
+
+/* Labels en capitales : interlettrage large obligatoire, sinon les petites
+   capitales se tassent et deviennent illisibles. */
+.eyebrow,
+.stat-card__label,
+.admin-page__sub-label {
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  color: var(--text-muted);
+}
 
 /* Chiffres alignés : seule usage légitime du monospace */
 .num, .money, [data-numeric] {
@@ -280,7 +315,24 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   border: 1.5px dashed var(--border-strong);
   border-radius: var(--r-xl);
 }
-.empty-state__emoji { font-size: 2.5rem; line-height: 1; display: block; margin-bottom: var(--sp-4); }
+/* L'icône d'un état vide est un SVG : sa dimension se fixe en pixels. Elle est
+   volontairement plus grande que les icônes de liste car elle occupe seule la
+   zone centrale, et plus discrète en couleur que le titre pour ne pas lui
+   disputer l'attention. */
+.empty-state__icon {
+  width: 44px;
+  height: 44px;
+  /* `display: block` + `margin-inline: auto` : le parent est en text-align
+     center, mais une boîte de type bloc ignore text-align et reste collée à
+     gauche. Le centrage explicite est donc nécessaire, sinon l'icône casse
+     l'axe de la composition. */
+  display: block;
+  margin-inline: auto;
+  margin-bottom: var(--sp-4);
+  color: var(--text-muted);
+  opacity: 0.8;
+  stroke-width: 1.4;
+}
 .empty-state__title {
   font-family: var(--font-display);
   font-size: var(--fs-h3);
@@ -621,30 +673,142 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   font-size: var(--fs-small);
 }
 
-/* ── Héros d'accueil : un seul CTA primaire, rien d'autre à cliquer ── */
+/* ── Héros d'accueil ──────────────────────────────────────────
+   Composition en deux colonnes sur desktop : le texte à gauche (accroche,
+   promesse, CTA), un visuel produit à droite. Sur mobile, empilé avec le
+   visuel en premier — une image vend mieux qu'un paragraphe sur un écran de
+   téléphone, et c'est la cible principale.
 
+   Le fond n'est pas un aplat : un dégradé radial chaud donne de la
+   profondeur sans image de fond lourde. */
 .hero {
+  position: relative;
   display: grid;
-  gap: var(--sp-4);
-  justify-items: start;
-  max-width: var(--container-narrow);
-  padding: var(--sp-7) 0 var(--sp-5);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-6);
+  align-items: center;
+  padding: var(--sp-7) 0 var(--sp-6);
+  min-width: 0;
 }
+@media (min-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: var(--sp-7);
+    padding: var(--sp-8) 0 var(--sp-7);
+  }
+}
+.hero__inner {
+  display: grid;
+  gap: var(--sp-5);
+  justify-items: start;
+  min-width: 0;
+}
+/* Titre d'accroche : le seul `--fs-mega` du site. Il doit tenir en 2-3 lignes
+   maximum — au-delà, il perd son effet et pousse le CTA hors de l'écran. */
 .hero__title {
-  font-size: var(--fs-display);
+  font-size: var(--fs-mega);
+  line-height: var(--lh-mega);
+  letter-spacing: var(--ls-mega);
+  font-weight: var(--fw-semibold);
+  max-width: 15ch;
 }
 .hero__lead {
   margin: 0;
   font-size: var(--fs-h3);
   font-weight: var(--fw-regular);
-  color: var(--text-muted);
+  color: var(--text-body);
   line-height: var(--lh-body);
+  max-width: 46ch;
 }
 .hero__actions {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
   flex-wrap: wrap;
+}
+/* Points de réassurance sous le CTA : trois réponses courtes aux questions
+   qu'un acheteur se pose avant de cliquer. Puces séparées par un point
+   médian, pas de liste à puces (trop administratif pour un hero). */
+.hero__points {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+.hero__points li {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.hero__points li::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex: none;
+}
+
+/* Visuel du héros : cadre incliné légèrement, avec une ombre portée marquée.
+   Le décalage de rotation casse la régularité de la grille et attire l'œil —
+   c'est ce qui distingue une composition d'un empilement de blocs. */
+.hero__visual {
+  position: relative;
+  min-width: 0;
+}
+.hero__visual-frame {
+  position: relative;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: var(--bg-sand);
+  box-shadow: var(--shadow-lg);
+  border: 1.5px solid var(--border-soft);
+}
+@media (min-width: 900px) {
+  .hero__visual-frame {
+    transform: rotate(-1.5deg);
+    transition: transform var(--dur-slow) var(--ease);
+  }
+  .hero__visual:hover .hero__visual-frame {
+    transform: rotate(0deg) scale(1.01);
+  }
+}
+/* Étiquette en surimpression : donne l'impression d'une mise en scène
+   éditoriale plutôt que d'une simple image posée dans un cadre. */
+.hero__visual-badge {
+  position: absolute;
+  left: var(--sp-4);
+  bottom: var(--sp-4);
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: rgba(255, 250, 245, 0.94);
+  backdrop-filter: blur(6px);
+  border: 1.5px solid var(--border-soft);
+  box-shadow: var(--shadow-md);
+  max-width: calc(100% - var(--sp-6));
+}
+.hero__visual-badge-label {
+  font-size: var(--fs-micro);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  font-weight: var(--fw-semibold);
+}
+.hero__visual-badge-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  line-height: 1.2;
 }
 
 /* ── Grille de cartes : 1 colonne mobile / 2 tablette / 3 desktop ── */
@@ -794,20 +958,28 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 @media (min-width: 900px) {
   .detail { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* Le visuel occupe la moitié gauche. Cadre PLEIN et non pointillé : la version
+   pointillée était un gabarit d'attente, elle donnait l'impression d'un
+   emplacement photo vide même quand l'image était chargée. */
 .detail__media {
   display: grid;
   gap: var(--sp-2);
   place-items: center;
-  /* Le visuel n'existe pas encore : un cadre au format 4/3 réserve la place
-     exacte qu'il occupera, la page ne saute pas quand il arrivera. */
   aspect-ratio: 4 / 3;
   padding: var(--sp-5);
   text-align: center;
   background: var(--bg-sand);
-  border: 1.5px dashed var(--border-strong);
+  border: 1.5px solid var(--border-soft);
   border-radius: var(--r-lg);
   color: var(--text-muted);
   font-size: var(--fs-small);
+  overflow: hidden;
+  min-width: 0;
+}
+.detail__media .product-visual {
+  width: 100%;
+  height: 100%;
+  border-radius: var(--r-md);
 }
 .detail__media-emoji {
   font-size: 2.5rem;
@@ -1281,4 +1453,394 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
   margin: 0;
   color: var(--text-muted);
   font-size: var(--fs-micro);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ACCUEIL — sections composées
+   ══════════════════════════════════════════════════════════════ */
+
+/* Lien de fin de section (« Tout le catalogue → ») : discret au repos, il
+   s'accentue au survol avec un léger décalage de la flèche. */
+.section__link {
+  font-size: var(--fs-small);
+  font-weight: var(--fw-semibold);
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color var(--dur-base) var(--ease);
+}
+.section__link:hover {
+  color: var(--accent-hover);
+  text-decoration: none;
+}
+
+/* ── Cartes de catégorie ──────────────────────────────────────
+   Plus grandes que les cartes produit : ce sont des portes d'entrée, pas
+   des articles. Le visuel occupe toute la largeur, le texte passe dessous
+   dans un bandeau — la composition se lit d'un coup d'œil. */
+.category-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--sp-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 640px) {
+  .category-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.category-grid > * {
+  min-width: 0;
+}
+.category-card {
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--bg-raised);
+  border: 1.5px solid var(--border-soft);
+  box-shadow: var(--shadow-xs);
+  transition:
+    transform var(--dur-base) var(--ease),
+    box-shadow var(--dur-base) var(--ease);
+}
+.category-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+.category-card__link {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr);
+  align-items: center;
+  gap: 0;
+  text-decoration: none;
+  min-width: 0;
+}
+.category-card__link:hover {
+  text-decoration: none;
+}
+/* Le visuel carré est rogné dans une colonne fixe : la carte garde une
+   hauteur régulière quelle que soit la photo. */
+.category-card__media {
+  width: 108px;
+  height: 108px;
+  overflow: hidden;
+  background: var(--bg-sand);
+  flex: none;
+}
+.category-card__media .product-visual {
+  width: 108px;
+  height: 108px;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+.category-card__body {
+  padding: var(--sp-4) var(--sp-5);
+  min-width: 0;
+}
+.category-card__title {
+  margin: 0 0 var(--sp-1);
+  font-size: var(--fs-h2);
+  color: var(--text-strong);
+}
+.category-card__meta {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+/* La flèche glisse vers la droite au survol : signal de navigation sans
+   changer la mise en page. */
+.category-card__arrow {
+  margin-left: auto;
+  color: var(--accent);
+  font-weight: var(--fw-bold);
+  transition: transform var(--dur-base) var(--ease);
+}
+.category-card:hover .category-card__arrow {
+  transform: translateX(4px);
+}
+
+/* ── Bandeau de réassurance ───────────────────────────────────
+   Quatre arguments courts, en grille. Fond légèrement creusé pour le
+   détacher du reste sans crier — c'est une zone de confiance, pas une
+   publicité. */
+.assurance {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  margin-top: var(--sp-7);
+  padding: var(--sp-6) var(--sp-5);
+  background: var(--bg-sand);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-xl);
+}
+@media (min-width: 700px) {
+  .assurance {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--sp-5) var(--sp-6);
+  }
+}
+@media (min-width: 1100px) {
+  .assurance {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.assurance__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  min-width: 0;
+}
+/* L'icône prend la couleur d'accent : c'est un repère de lecture, pas une
+   illustration. Elle ne grossit pas, même sur grand écran. */
+.assurance__icon {
+  color: var(--accent);
+  flex: none;
+  margin-top: 1px;
+}
+.assurance__title {
+  margin: 0 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+.assurance__text {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── Fil d'Ariane ──
+   Discret mais utile : il indique la profondeur et offre un retour à la
+   catégorie sans passer par le menu. Les segments sont cliquables, le
+   séparateur ne l'est pas et reste décoratif. */
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  font-size: var(--fs-small);
+  margin-bottom: var(--sp-1);
+}
+.breadcrumb__link {
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--dur-base) var(--ease);
+}
+.breadcrumb__link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.breadcrumb__sep {
+  color: var(--border-strong);
+  user-select: none;
+}
+
+/* ── Bloc d'achat de la fiche produit ──
+   Encadré par un fond légèrement creusé et une bordure plus marquée : c'est
+   la zone d'action, elle doit se distinguer du reste de la colonne. */
+.card--purchase {
+  background: var(--bg-sand);
+  border-color: var(--border-strong);
+}
+
+/* Arguments de réassurance sous le bouton d'ajout au panier.
+   Puces personnalisées en coche plutôt qu'en disque : la coche dit
+   « c'est inclus », le disque dit seulement « voici une ligne ». */
+.purchase-points {
+  list-style: none;
+  margin: var(--sp-4) 0 0;
+  padding: var(--sp-4) 0 0;
+  border-top: 1.5px solid var(--border-soft);
+  display: grid;
+  gap: var(--sp-2);
+  font-size: var(--fs-small);
+  color: var(--text-body);
+}
+.purchase-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.purchase-points li::before {
+  content: "✓";
+  color: var(--success);
+  font-weight: var(--fw-bold);
+  flex: none;
+  line-height: 1.5;
+}
+
+/* ── Sélecteur de quantité (− / +) ──
+   Cible tactile de 44 px sur chaque bouton (norme mobile), chiffre centré
+   entre les deux. Le champ libre est évité : sur téléphone il ouvre le
+   clavier et oblige à viser une petite zone. */
+.qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--r-pill);
+  background: var(--bg-raised);
+  overflow: hidden;
+}
+.qty-stepper__btn {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: 1.25rem;
+  font-weight: var(--fw-medium);
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease);
+  font-family: var(--font-body);
+}
+.qty-stepper__btn:hover:not(:disabled) {
+  background: var(--bg-sand);
+  color: var(--accent);
+}
+.qty-stepper__btn:disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+}
+/* Le chiffre ne doit pas bouger quand on passe de 9 à 10 : largeur minimale
+   et chiffres tabulaires. */
+.qty-stepper__value {
+  min-width: 2.5rem;
+  text-align: center;
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+}
+
+/* Total de la ligne d'achat : à droite du bouton, en serif pour le poids. */
+.purchase-total {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.purchase-total .money {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-bold);
+  color: var(--text-strong);
+}
+
+/* Bouton large : utilisé pour l'action principale d'une page (ajout au
+   panier, valider la commande). */
+.btn--lg {
+  padding: 0.8125rem 1.625rem;
+  font-size: var(--fs-body);
+}
+
+/* ── Pastille de couleur de variante ──
+   Un nom de couleur ne dit pas grand-chose : un carré de la couleur réelle
+   se comprend sans lire. La pastille reprend la couleur de la variante et
+   porte une bordure discrète pour rester visible sur les teintes claires
+   (beige, naturel) sans quoi elle disparaîtrait dans le fond crème. */
+.variant-swatch {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  /* Double lecture du contour, indispensable pour les teintes CLAIRES
+     (naturel, crème, beige) : un seul trait sombre les rend grises, un seul
+     trait clair les fait disparaître. On superpose donc un liseré sombre et
+     un liseré clair intérieur — la pastille reste définie sur n'importe quel
+     fond, y compris le blanc du bouton. */
+  border: 1px solid rgba(42, 24, 16, 0.45);
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.85);
+  flex: none;
+}
+/* Pastilles utilisées dans le menu déroulant : alignées avec le texte. */
+.variant-swatch--inline {
+  vertical-align: middle;
+}
+
+/* ── États du sélecteur de quantité ──
+   Le bouton désactivé doit se voir comme tel : à quantité 1, le « − » n'a
+   plus d'effet, il ne doit pas inviter au clic. */
+.qty-stepper__btn:disabled {
+  color: var(--text-disabled);
+  cursor: not-allowed;
+  background: transparent;
+}
+.qty-stepper__btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
+  border-radius: 0;
+}
+
+/* ── Rangée de pastilles de couleur ──
+   Cible tactile de 32 px (assez pour le pouce sans dominer le champ), avec
+   un anneau sur la sélection. Les teintes claires (beige, naturel) ne se
+   distinguent du fond crème que par leur bordure — d'où le contour systématique
+   sur `.variant-swatch`. */
+.variant-swatches {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+  flex-wrap: wrap;
+}
+.variant-swatches__item {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-sm);
+  background: var(--bg-raised);
+  cursor: pointer;
+  transition:
+    border-color var(--dur-fast) var(--ease),
+    transform var(--dur-fast) var(--ease);
+}
+.variant-swatches__item:hover:not(:disabled) {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.variant-swatches__item--active {
+  border-color: var(--accent);
+  /* Double anneau : un liseré clair PUIS un sombre. Un anneau unique
+     disparaîtrait soit sur la pastille noire, soit sur le fond crème. */
+  box-shadow:
+    0 0 0 2px var(--bg-raised),
+    0 0 0 4px var(--accent);
+}
+.variant-swatches__item:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  /* Une variante épuisée est barrée : l'opacité seule ne se lit pas comme
+     « indisponible » quand plusieurs pastilles voisines sont pâles. */
+  position: relative;
+}
+.variant-swatches__item:disabled::after {
+  content: "";
+  position: absolute;
+  inset: 4px;
+  background: linear-gradient(
+    to top right,
+    transparent calc(50% - 0.75px),
+    var(--border-strong) calc(50% - 0.75px),
+    var(--border-strong) calc(50% + 0.75px),
+    transparent calc(50% + 0.75px)
+  );
+  border-radius: 2px;
+}
+.variant-swatches__item:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }

@@ -6,6 +6,9 @@ import { computeTotals } from "@/domain/cart";
 import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
 import { CartItemsClient } from "@/ui/components/cart-items-client";
+import {
+  IconCart,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +31,7 @@ export default async function CartPage() {
         </div>
 
         <div className="empty-state enter enter-2">
-          <span className="empty-state__emoji" aria-hidden>
-            🛒
-          </span>
+          <IconCart className="empty-state__icon" />
           <p className="empty-state__title">Votre panier est vide</p>
           <p className="empty-state__text">
             Aucun article n&apos;a encore été ajouté. Parcourez le catalogue, choisissez une

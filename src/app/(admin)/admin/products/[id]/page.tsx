@@ -12,6 +12,9 @@ import { ProductForm } from "@/ui/components/admin/product-form";
 import { VariantStockForm } from "@/ui/components/admin/variant-stock-form";
 import { Money } from "@/ui/components/money";
 import { formatDateTime } from "@/ui/format";
+import {
+  IconProducts,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -72,9 +75,7 @@ export default async function AdminProductDetailPage({
 
         {product.variants.length === 0 ? (
           <div className="empty-state">
-            <span className="empty-state__emoji" aria-hidden>
-              🎨
-            </span>
+            <IconProducts className="empty-state__icon" />
             <p className="empty-state__title">Aucune variante</p>
             <p className="empty-state__text">
               Ce produit n&apos;a ni taille, ni couleur, ni SKU : il n&apos;est donc pas

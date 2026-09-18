@@ -3,6 +3,9 @@ import Link from "next/link";
 import { formatMoneyEur } from "@/domain/pricing";
 import { prisma } from "@/lib/db";
 import { ProductVisual } from "@/ui/components/product-visual";
+import {
+  IconSearch,
+} from "@/ui/components/icons";
 
 export const dynamic = "force-dynamic";
 
@@ -70,8 +73,10 @@ export default async function ProductsListPage({
           <p className="eyebrow">{filtered ? "Catégorie" : "Tout le catalogue"}</p>
           <h1 className="page__title">{activeCategory ? activeCategory.name : "Catalogue"}</h1>
           <p className="page__sub">
-            {items.length} produit{items.length > 1 ? "s" : ""}
-            {filtered ? " dans cette catégorie" : ` sur ${totalAll}`}.
+            <span className="num">{items.length}</span> produit
+            {items.length > 1 ? "s" : ""}
+            {filtered ? " dans cette catégorie" : ` sur ${totalAll}`}. Livraison suivie,
+            paiement Mobile Money ou virement.
           </p>
         </div>
       </div>
@@ -111,9 +116,7 @@ export default async function ProductsListPage({
 
       {items.length === 0 ? (
         <div className="empty-state">
-          <span className="empty-state__emoji" aria-hidden>
-            🔍
-          </span>
+          <IconSearch className="empty-state__icon" />
           <p className="empty-state__title">
             {filtered ? "Aucun produit dans cette catégorie" : "Aucun produit"}
           </p>

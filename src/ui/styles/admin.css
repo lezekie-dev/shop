@@ -106,10 +106,20 @@
   color: var(--accent);
   font-weight: var(--fw-semibold);
 }
+/* L'icône est un SVG : sa taille se pilote en pixels, pas en font-size. Elle
+   reste discrète au repos et prend la couleur du lien quand il est actif —
+   l'état actif est ainsi porté par la couleur ET le fond, pas seulement
+   par le gras. */
 .admin-nav__icon {
-  font-size: var(--fs-body);
-  line-height: 1;
+  width: 17px;
+  height: 17px;
   flex: none;
+  opacity: 0.75;
+  transition: opacity var(--dur-base) var(--ease);
+}
+.admin-nav__link:hover .admin-nav__icon,
+.admin-nav__link--active .admin-nav__icon {
+  opacity: 1;
 }
 
 @media (max-width: 900px) {
@@ -602,4 +612,24 @@
   align-items: center;
   gap: var(--sp-3);
   flex-wrap: wrap;
+}
+
+/* ── Marqueur d'environnement de démonstration ──
+   Visible uniquement dans le back-office : signale au marchand que les
+   visuels et le paiement sont simulés. Sur la vitrine, une telle mention
+   casserait la crédibilité — c'est une information d'exploitation. */
+.admin-env-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--r-pill);
+  background: var(--warning-tint);
+  border: 1.5px solid rgba(161, 98, 7, 0.25);
+  color: var(--warning);
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-label);
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex: none;
 }
