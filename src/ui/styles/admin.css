@@ -713,3 +713,97 @@
   color: var(--danger);
   font-weight: var(--fw-semibold);
 }
+
+/* ══════════════════════════════════════════════════════════════
+   CONNEXION ADMIN
+   ══════════════════════════════════════════════════════════════
+   Cette page était la dernière restée sur des styles écrits à la main
+   (bouton noir #111, bordures 1px, rayon 6px). Elle utilise maintenant le
+   design system comme le reste — c'est le PREMIER écran que voit le marchand,
+   il ne peut pas être celui qui paraît inachevé. */
+
+.login-page {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;   /* dvh et non vh : sur mobile, la barre d'URL réduit la
+                           hauteur visible et `vh` déborde sous l'écran. */
+  padding: var(--sp-5);
+  background: var(--bg-app);
+}
+
+.login-page__card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  box-shadow: var(--shadow-md);
+}
+
+.login-page__title {
+  font-family: var(--font-display);
+  font-size: var(--fs-h1-page);
+  font-weight: var(--fw-semibold);
+  color: var(--text-strong);
+  letter-spacing: var(--ls-tight);
+  margin: var(--sp-1) 0 var(--sp-2);
+}
+
+.login-page__sub {
+  margin: 0 0 var(--sp-5);
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+.login-page__form {
+  display: grid;
+  gap: var(--sp-4);
+}
+
+.login-page__field {
+  display: grid;
+  gap: var(--sp-1);
+}
+
+.login-page__label {
+  font-size: var(--fs-micro);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--ls-label);
+  color: var(--text-muted);
+}
+
+.login-page__hint {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.login-page__note {
+  margin: 0;
+  font-size: var(--fs-small);
+  color: var(--info);
+  background: var(--info-tint);
+  border: 1.5px solid var(--border-soft);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+}
+
+/* Un message d'erreur doit se voir immédiatement : fond teinté + bordure,
+   pas seulement du texte rouge (que l'œil peut sauter). */
+.login-page__error {
+  margin: 0;
+  font-size: var(--fs-small);
+  font-weight: var(--fw-medium);
+  color: var(--danger);
+  background: var(--danger-tint);
+  border: 1.5px solid var(--danger);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+}
+
+.login-page__submit {
+  width: 100%;
+  justify-content: center;
+}

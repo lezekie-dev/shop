@@ -7,35 +7,56 @@
 :root {
   /* ── Couleurs de surface (jamais de blanc pur, jamais de noir pur) ── */
   --bg-app: #fbf7f0;          /* cream — fond global */
-  --bg-raised: #ffffff;        /* cartes posées sur le cream */
+  --bg-raised: #fffdf9;        /* cartes posées sur le cream */
   --bg-sand: #f4ebd9;          /* sand — zones secondaires, bandeaux */
   --bg-inset: #f7f1e7;         /* champs, zones creusées */
 
   /* ── Texte ── */
   --text-strong: #2a1810;      /* warm brown — titres */
   --text-body: #4a3428;        /* corps de texte */
-  --text-muted: #8a7264;       /* légendes, méta */
-  --text-disabled: #c4b3a4;    /* boutons désactivés (contraste faible voulu) */
+  --text-muted: #7a6355;       /* légendes, méta */
+  --text-disabled: #a38f82;    /* boutons désactivés (contraste faible voulu) */
   --text-inverse: #fffaf5;     /* sur fond terracotta */
 
   /* ── Bordures ── */
-  --border-soft: #e8dcc4;      /* le trait par défaut sur cream */
-  --border-strong: #d8c9ab;    /* séparateurs marqués */
+  --border-soft: #e8dccb;      /* le trait par défaut sur cream */
+  --border-strong: #ddcfbc;    /* séparateurs marqués */
 
   /* ── Accents ── */
   --accent: #c2410c;           /* terracotta — CTA principal */
-  --accent-hover: #9a3412;     /* terracotta pressé */
+  --accent-hover: #aa380a;     /* terracotta survol (plus clair que le pressé) */
+  --accent-pressed: #9a3412;   /* terracotta enfoncé — état :active */
   --accent-tint: #fdf0e7;      /* terracotta 8% pour fonds d'alerte douce */
-  --accent-ring: rgba(194, 65, 12, 0.15);
+  --accent-ring: rgba(194, 65, 12, 0.25);
 
   --success: #0f766e;          /* vert forêt */
-  --success-tint: #e6f2f0;
+  --success-tint: #e6f4f2;
   --warning: #a16207;          /* ocre — attention, jamais jaune vif */
-  --warning-tint: #fdf6e3;
+  --warning-tint: #fef9ee;
   --danger: #a4232b;           /* rouge brique, pas rouge pompier */
-  --danger-tint: #fbeaea;
-  --info: #4a5568;             /* gris ardoise chaud */
-  --info-tint: #eef1f4;
+  --danger-tint: #fdf2f2;
+  --info: #2b5c75;             /* gris ardoise chaud */
+  --info-tint: #eff6f9;
+
+/* ── Ajouts du design Stitch (Atelier Toile & Coton) ──
+     `--bg-raised` était en blanc pur ; sur un fond crème, une carte blanche
+     « crie » et donne un rendu plastique. Stitch propose un blanc cassé chaud.
+     On le garde sous un nom distinct pour ne pas toucher aux cartes existantes
+     tant que la migration n'est pas faite écran par écran. */
+  --bg-card: #fffdf9;          /* carte surélevée, blanc chaud */
+
+  /* Fond d'accent très clair : pour les étiquettes et encarts d'avertissement
+     doux. Distinct de `--accent-tint`, qui sert aux alertes. */
+  --accent-soft: #f9ebe1;
+
+  /* Ocre de survol pour les ombres portées de cartes. Stitch a une ombre
+     dédiée au survol, plus expressive que `--shadow-md`. */
+  --shadow-hover: 0 4px 16px rgba(42, 24, 16, 0.08), 0 1px 3px rgba(42, 24, 16, 0.05);
+
+  /* Échelle typographique — Stitch apporte les deux tailles qui manquaient
+     entre `--fs-h2` (1.375rem) et `--fs-display`. */
+  --fs-h1-page: 2rem;          /* h1 de page, hors hero */
+  --fs-h3-lg: 1.25rem;         /* sous-titre de section */
 
   /* ── Typographie ──
      Biface à contraste FORT : un serif avec du caractère pour le titrage,
@@ -47,7 +68,7 @@
      sur le titrage. Inter reste le contrepoint neutre du corps de texte. */
   --font-display: "Fraunces", "Playfair Display", Georgia, serif;
   --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-numeric: ui-monospace, "SF Mono", "Cascadia Mono", monospace;
+  --font-numeric: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   /* Échelle — sauts LARGES, pas de 1.5x timide.
      `--fs-mega` n'est utilisé qu'une fois par page (le titre du hero) : c'est
@@ -99,8 +120,8 @@
   /* ── Ombres — douces et diffuses, jamais dures ── */
   --shadow-xs: 0 1px 2px rgba(42, 24, 16, 0.04);
   --shadow-sm: 0 1px 2px rgba(42, 24, 16, 0.04), 0 1px 3px rgba(42, 24, 16, 0.06);
-  --shadow-md: 0 4px 12px rgba(42, 24, 16, 0.06);
-  --shadow-lg: 0 12px 32px rgba(42, 24, 16, 0.08);
+  --shadow-md: 0 1px 3px rgba(42, 24, 16, 0.06), 0 4px 12px rgba(42, 24, 16, 0.03);
+  --shadow-lg: 0 8px 24px rgba(42, 24, 16, 0.08), 0 2px 6px rgba(42, 24, 16, 0.04);
 
   /* ── Mouvement ── */
   --dur-fast: 120ms;
@@ -109,14 +130,14 @@
   --ease: cubic-bezier(0.4, 0, 0.2, 1);
 
   /* ── Mise en page ── */
-  --container: 1120px;
+  --container: 1160px;
   --container-narrow: 720px;
   /* Colonne de lecture courte : pages d'instructions de paiement et bloc de
      confirmation, centrés. Une confirmation pleine largeur se lit mal. */
   --container-slim: 34rem;
   /* Le back-office affiche des tableaux à 7 colonnes : le plafond de 1120px
      forçait un scroll horizontal même en 1440px d'écran. */
-  --container-admin: 1360px;
+  --container-admin: 1380px;
 }
 
 /* ── Profondeur de fond : dégradés radiaux fixes, jamais un aplat ── */
@@ -201,7 +222,7 @@ h3 { font-size: var(--fs-h3); font-weight: var(--fw-medium); }
 }
 
 .btn-secondary {
-  background: var(--bg-raised);
+  background: var(--bg-card);
   color: var(--text-strong);
   border-color: var(--border-strong);
 }
@@ -209,6 +230,22 @@ h3 { font-size: var(--fs-h3); font-weight: var(--fw-medium); }
   border-color: var(--accent);
   color: var(--accent);
   transform: translateY(-1px);
+}
+
+/* ── État PRESSÉ ──
+   Il n'existait pas : au clic, rien ne bougeait. Sur mobile, où il n'y a pas
+   de survol, l'utilisateur n'avait donc AUCUN retour visuel avant l'action —
+   il appuyait une seconde fois. Le bouton s'enfonce d'un pixel et revient à
+   sa couleur de repos : c'est le geste physique qu'on attend. */
+.btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--accent-pressed);
+}
+.btn-secondary:active:not(:disabled) {
+  background: var(--bg-sand);
 }
 
 .btn:disabled {
@@ -252,7 +289,10 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 /* ── Cartes ── */
 
 .card {
-  background: var(--bg-raised);
+  /* Blanc CHAUD (#fffdf9) et non blanc pur : sur un fond crème, une carte
+     blanche « crie » et donne un rendu plastique. C'est la correction la plus
+     visible apportée par le design Stitch. */
+  background: var(--bg-card);
   border: 1.5px solid var(--border-soft);
   border-radius: var(--r-lg);
   padding: var(--sp-5);
@@ -1468,6 +1508,71 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 }
 
 /* ══════════════════════════════════════════════════════════════
+   CARROUSEL MOBILE — scroll-snap, ZÉRO JavaScript
+   ══════════════════════════════════════════════════════════════
+   Sur un écran de téléphone, une grille de produits empilés en vertical
+   oblige à faire défiler une page très longue pour voir l'offre. Un bandeau
+   horizontal se parcourt d'un balayage, et le `scroll-snap` natif cale la
+   carte suivante toute seule — aucun écouteur d'événement, aucun script, donc
+   rien à charger en plus sur une connexion 3G.
+
+   Au-delà de 768px, on repasse en grille : le carrousel n'a de sens que là où
+   l'écran est étroit. */
+
+@media (max-width: 767px) {
+  /* Bandeau de catégories défilable : les pastilles ne se cassent plus en
+     deux lignes, elles glissent horizontalement. */
+  .filters,
+  .category-filters {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--sp-2);
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    /* `-webkit-overflow-scrolling` : inertie naturelle sur iOS. */
+    -webkit-overflow-scrolling: touch;
+    /* On masque la barre de défilement : sur mobile elle apparaît en plein
+       milieu du contenu et casse la lecture. Le défilement reste possible. */
+    scrollbar-width: none;
+    padding-bottom: var(--sp-1);
+  }
+  .filters::-webkit-scrollbar,
+  .category-filters::-webkit-scrollbar {
+    display: none;
+  }
+  .filters > *,
+  .category-filters > * {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
+  /* Grille produits → carrousel horizontal */
+  .card-grid {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: var(--sp-4);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    /* Marge négative + padding : les cartes touchent les bords de l'écran
+       quand on balaie, au lieu de laisser une bande morte sur le côté. */
+    margin-inline: calc(var(--sp-4) * -1);
+    padding-inline: var(--sp-4);
+    padding-bottom: var(--sp-2);
+  }
+  .card-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .card-grid > * {
+    /* 78vw : la carte suivante dépasse légèrement, ce qui indique qu'il y a
+       une suite à faire défiler. Une carte à 100vw ne laisserait rien voir. */
+    flex: 0 0 78vw;
+    scroll-snap-align: center;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
    ACCUEIL — sections composées
    ══════════════════════════════════════════════════════════════ */
 
@@ -1978,7 +2083,7 @@ a:hover { color: var(--accent-hover); text-decoration: underline; }
 }
 .kanban-card {
   background: var(--bg-raised);
-  border: 1px solid var(--border-soft);
+  border: 1.5px solid var(--border-soft);
   border-radius: var(--r-md);
   padding: var(--sp-3);
   min-width: 0;
